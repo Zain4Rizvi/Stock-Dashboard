@@ -1,3 +1,4 @@
+import { projectGrowth } from "./compound";
 import { roundMoney } from "./returns";
 
 export interface FanYear {
@@ -69,4 +70,77 @@ export function monteCarloFan(input: {
       p90: roundMoney(percentile(sorted, 0.9)),
     };
   });
+}
+
+export interface OutcomeRange {
+  low: number;
+  middle: number;
+  high: number;
+  kind: "simulation" | "scenario";
+  lowLabel: string;
+  middleLabel: string;
+  highLabel: string;
+  note: string;
+}
+
+const SIMULATION_COPY = {
+  kind: "simulation" as const,
+  lowLabel: "Low, an unlikely edge",
+  middleLabel: "Middle, where most simulated outcomes landed",
+  highLabel: "High, an unlikely edge",
+  note: "Most simulated outcomes landed between these edges. The edges are unlikely, not a promise the market will land there.",
+};
+
+const SCENARIO_COPY = {
+  kind: "scenario" as const,
+  lowLabel: "Conservative scenario",
+  middleLabel: "Expected scenario",
+  highLabel: "Optimistic scenario",
+  note: "These are three scenarios, not the odds of what the market will do.",
+};
+
+/** Final low, middle, and high. Pass `volatility` to use the simulation; omit it for three scenarios. */
+export function projectOutcomeRange(input: {
+  principal: number;
+  contributionPerYear: number;
+  annualReturn: number;
+  years: number;
+  volatility?: number;
+  paths?: number;
+  seed?: number;
+}): OutcomeRange {
+  if (input.volatility == null) {
+    const ending = (annualRate: number) => {
+      const rows = projectGrowth({
+        principal: input.principal,
+        contributionPerYear: input.contributionPerYear,
+        annualRate,
+        years: input.years,
+      });
+      return rows[rows.length - 1]?.balance ?? 0;
+    };
+    return {
+      low: ending(input.annualReturn - 0.02),
+      middle: ending(input.annualReturn),
+      high: ending(input.annualReturn + 0.02),
+      ...SCENARIO_COPY,
+    };
+  }
+
+  const fan = monteCarloFan({
+    principal: input.principal,
+    contributionPerYear: input.contributionPerYear,
+    meanReturn: input.annualReturn,
+    volatility: input.volatility,
+    years: input.years,
+    paths: input.paths,
+    seed: input.seed,
+  });
+  const last = fan[fan.length - 1];
+  return {
+    low: last?.p10 ?? 0,
+    middle: last?.p50 ?? 0,
+    high: last?.p90 ?? 0,
+    ...SIMULATION_COPY,
+  };
 }
