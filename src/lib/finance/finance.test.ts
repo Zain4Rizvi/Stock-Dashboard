@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, futureValue, inflationAdjusted, projectGrowth } from "./compound";
+import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, futureValue, inflationAdjusted, projectGrowth, projectPortfolio } from "./compound";
 import { simulateDividend } from "./drip";
 import { monteCarloFan, projectOutcomeRange } from "./montecarlo";
 import { replayInvestment } from "./returns";
@@ -94,6 +94,35 @@ describe("finance", () => {
     });
     expect(drip[1].shares).toBeGreaterThan(drip[0].shares);
     expect(drip[1].cash).toBe(0);
+  });
+
+  it("projects an empty portfolio as nothing", () => {
+    expect(projectPortfolio([], 0.06, 1)).toBeNull();
+  });
+
+  it("projects one holding with compound growth", () => {
+    expect(projectPortfolio([{ dollars: 1000 }], 0.1, 1)).toBe(1100);
+    expect(projectPortfolio([{ dollars: 1000 }], 0.1, 5)).toBe(futureValue(1000, 0.1, 5));
+  });
+
+  it("projects weights that sum to 100% as the whole pile", () => {
+    const holdings = [{ dollars: 250 }, { dollars: 750 }];
+    const total = holdings.reduce((sum, holding) => sum + holding.dollars, 0);
+    const weight = holdings.reduce((sum, holding) => sum + holding.dollars / total, 0);
+    expect(weight).toBe(1);
+    expect(projectPortfolio(holdings, 0.1, 5)).toBe(futureValue(total, 0.1, 5));
+  });
+
+  it("ignores zero and negative dollars the desk cannot save", () => {
+    expect(projectPortfolio([{ dollars: 0 }, { dollars: -40 }, { dollars: 500 }], 0.1, 1)).toBe(550);
+    expect(projectPortfolio([{ dollars: 0 }, { dollars: -5 }], 0.1, 1)).toBeNull();
+  });
+
+  it("projects a higher assumed return as a higher value", () => {
+    const low = projectPortfolio([{ dollars: 1000 }], 0.04, 10);
+    const high = projectPortfolio([{ dollars: 1000 }], 0.08, 10);
+    expect(high).toBeGreaterThan(low ?? 0);
+    expect(high).toBe(futureValue(1000, 0.08, 10));
   });
 
   it("replays a purchase from the first close", () => {

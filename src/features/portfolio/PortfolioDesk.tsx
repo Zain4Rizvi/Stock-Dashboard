@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Disclaimer } from "@/components/ui/Disclaimer";
+import { projectPortfolio } from "@/lib/finance/compound";
 import { formatCad, formatPercent } from "@/lib/format";
 import { useDesk } from "@/lib/storage/desk";
 import type { ExplorerItem } from "@/types/market";
@@ -10,6 +11,8 @@ import Link from "next/link";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 const COLORS = ["#ff5a45", "#5ee0a0", "#f0c96a", "#8eb7ff", "#ff8fbf", "#ffb15e", "#c6a4ff", "#7ddec8"];
+const ASSUMED_GROWTH = 0.06;
+const HORIZONS = [1, 5, 10] as const;
 
 function Chip({ item }: { item: ExplorerItem }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.symbol });
@@ -65,7 +68,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
         <header>
           <h1 className="font-display text-5xl">A practice portfolio</h1>
           <p className="mt-3 max-w-2xl leading-7 text-mist">
-            Drag companies into a pile and give each one a pretend dollar amount. This is a sketch of a mix, not an account.
+            This page is a sandbox for a portfolio: the companies you pick, and how many pretend dollars sit in each one. A portfolio is just that mix. A what-if further down asks what that pile would be if it grew at a pace we assumed. You are not opening an account.
           </p>
         </header>
         <Disclaimer prominent />
@@ -111,30 +114,75 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
         </div>
         {total > 0 ? (
           <section className="grid items-center gap-6 rounded-3xl border border-cream/10 bg-pine/70 p-5 md:grid-cols-2">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={rows.map((row) => ({ name: row.symbol, value: row.dollars }))} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
-                    {rows.map((row, index) => (
-                      <Cell key={row.symbol} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCad(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={rows.map((row) => ({ name: row.symbol, value: row.dollars }))} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                      {rows.map((row, index) => (
+                        <Cell key={row.symbol} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCad(Number(value))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="flex flex-wrap justify-center gap-3 text-xs text-mist">
+                {rows.map((row, index) => (
+                  <li key={row.symbol} className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[index % COLORS.length] }} aria-hidden="true" />
+                    {row.symbol}
+                  </li>
+                ))}
+              </ul>
             </div>
             <div>
               <p className="font-display text-3xl">{formatCad(total)} on paper</p>
               <p className="mt-3 leading-7">
-                If every dividend stayed the same, this mix would pay about {formatCad(income)} in a year. Yields change, and some of these companies pay nothing.
+                If every company kept paying the same cash dividend, this mix would pay about {formatCad(income)} in a year. A dividend is cash some companies hand out. Some of these pay nothing, and the amounts change.
               </p>
               <p className="mt-3 text-sm leading-6 text-mist">
-                Over the past year, a mix with these weights would have moved about {formatPercent(past, 1, true)}. That is history wearing a costume. It is not next year.
+                Over the past year, a mix with these weights would have moved about {formatPercent(past, 1, true)}. Weight means a company&apos;s share of the pile. That is history wearing a costume. It is not next year.
               </p>
+              <PortfolioForecast rows={rows} />
             </div>
           </section>
         ) : null}
       </div>
     </DndContext>
+  );
+}
+
+function PortfolioForecast({ rows }: { rows: { dollars: number }[] }) {
+  const forecast = HORIZONS.flatMap((years) => {
+    const value = projectPortfolio(rows, ASSUMED_GROWTH, years);
+    return value == null ? [] : [{ years, value }];
+  });
+  if (forecast.length === 0) return null;
+  const tallest = Math.max(...forecast.map((row) => row.value));
+  const pace = formatPercent(ASSUMED_GROWTH * 100, 0);
+  return (
+    <div className="mt-5 grid gap-3">
+      <h2 className="font-display text-2xl">If it grew at {pace} a year</h2>
+      <p className="text-sm leading-6 text-mist">
+        What-if, not a promise. This assumes the whole pile grows at that pace and you add nothing. The market does not owe you that.
+      </p>
+      <ul className="grid gap-2">
+        {forecast.map((row) => (
+          <li key={row.years}>
+            <div className="flex justify-between text-sm">
+              <span>{row.years === 1 ? "1 year" : `${row.years} years`}</span>
+              <span>{formatCad(row.value)}</span>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-cream/10" aria-hidden="true">
+              <div
+                className="h-2 rounded-full bg-aurora"
+                style={{ width: `${tallest > 0 ? (row.value / tallest) * 100 : 0}%` }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

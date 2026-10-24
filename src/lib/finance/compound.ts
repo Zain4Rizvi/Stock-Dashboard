@@ -49,3 +49,14 @@ export function inflationAdjusted(nominal: number, annualInflation: number, year
   const elapsed = Math.max(0, Math.floor(years));
   return roundMoney(nominal / (1 + rate) ** elapsed);
 }
+
+/** Counted dollars compounded at `annualRate` (0.06 means 6%). Non-positive dollars are ignored. */
+export function projectPortfolio(
+  holdings: readonly { dollars: number }[],
+  annualRate: number,
+  years: number,
+): number | null {
+  const principal = holdings.reduce((sum, holding) => (holding.dollars > 0 ? sum + holding.dollars : sum), 0);
+  if (!(principal > 0)) return null;
+  return futureValue(principal, annualRate, years);
+}
