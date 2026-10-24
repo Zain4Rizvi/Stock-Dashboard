@@ -1,7 +1,7 @@
 "use client";
 
 import { Disclaimer } from "@/components/ui/Disclaimer";
-import { projectGrowth } from "@/lib/finance/compound";
+import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, inflationAdjusted, projectGrowth } from "@/lib/finance/compound";
 import { monteCarloFan } from "@/lib/finance/montecarlo";
 import { formatCad } from "@/lib/format";
 import { useMemo, useState } from "react";
@@ -19,7 +19,9 @@ export function RetirementLab() {
   const [monthly, setMonthly] = useState(300);
   const [start, setStart] = useState(1000);
   const [preset, setPreset] = useState<(typeof PRESETS)[number]["id"]>("balanced");
+  const [inflationPercent, setInflationPercent] = useState(2);
   const choice = PRESETS.find((item) => item.id === preset) ?? PRESETS[1];
+  const inflation = inflationPercent / 100;
   const years = Math.max(0, retire - age);
   const fan = useMemo(
     () =>
@@ -40,14 +42,22 @@ export function RetirementLab() {
     annualRate: choice.rate,
     years,
   });
-  const chart = fan.map((row, index) => ({
-    year: age + row.year,
-    p10: row.p10,
-    p50: row.p50,
-    span: Math.max(0, row.p90 - row.p10),
-    steady: steady[index]?.balance ?? 0,
-  }));
-  const last = fan[fan.length - 1];
+  const inToday = (amount: number, elapsed: number) => inflationAdjusted(amount, inflation, elapsed);
+  const chart = fan.map((row, index) => {
+    const p10 = inToday(row.p10, row.year);
+    const p90 = inToday(row.p90, row.year);
+    return {
+      year: age + row.year,
+      p10,
+      p50: inToday(row.p50, row.year),
+      span: Math.max(0, p90 - p10),
+      steady: inToday(steady[index]?.balance ?? 0, row.year),
+    };
+  });
+  const end = fan[fan.length - 1];
+  const last = end
+    ? { p10: inToday(end.p10, end.year), p50: inToday(end.p50, end.year), p90: inToday(end.p90, end.year) }
+    : undefined;
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
@@ -76,6 +86,18 @@ export function RetirementLab() {
           </button>
         ))}
       </div>
+      <label className="block max-w-sm text-sm text-mist">
+        Prices rising about {inflationPercent}% a year. Amounts below are in today's dollars.
+        <input
+          className="mt-2 block w-full"
+          type="range"
+          min={INFLATION_RATE_MIN * 100}
+          max={INFLATION_RATE_MAX * 100}
+          step={1}
+          value={inflationPercent}
+          onChange={(event) => setInflationPercent(Number(event.target.value))}
+        />
+      </label>
       <section className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
         <p className="font-display text-3xl">
           Middle path about {formatCad(last?.p50 ?? 0)} at age {retire}

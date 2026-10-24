@@ -32,3 +32,20 @@ export function projectGrowth(input: {
 export function futureValue(principal: number, annualRate: number, years: number): number {
   return roundMoney(principal * (1 + annualRate) ** years);
 }
+
+/** The Future slider only sets 0% to 10% a year. */
+export const INFLATION_RATE_MIN = 0;
+export const INFLATION_RATE_MAX = 0.1;
+
+/**
+ * `annualInflation` is a decimal: 0.02 means prices rise 2% a year.
+ * Rates outside the slider are clamped. The result is today's dollars.
+ */
+export function inflationAdjusted(nominal: number, annualInflation: number, years: number): number {
+  const rate = Math.min(
+    INFLATION_RATE_MAX,
+    Math.max(INFLATION_RATE_MIN, Number.isFinite(annualInflation) ? annualInflation : INFLATION_RATE_MIN),
+  );
+  const elapsed = Math.max(0, Math.floor(years));
+  return roundMoney(nominal / (1 + rate) ** elapsed);
+}

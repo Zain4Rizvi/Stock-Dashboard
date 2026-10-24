@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectGrowth, futureValue } from "./compound";
+import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, futureValue, inflationAdjusted, projectGrowth } from "./compound";
 import { simulateDividend } from "./drip";
 import { monteCarloFan } from "./montecarlo";
 import { replayInvestment } from "./returns";
@@ -10,6 +10,17 @@ describe("finance", () => {
     const rows = projectGrowth({ principal: 1000, contributionPerYear: 100, annualRate: 0.1, years: 1 });
     expect(rows[1].balance).toBe(1200);
     expect(rows[1].contributed).toBe(1100);
+  });
+
+  it("deflates a balance by inflation and clamps the slider range", () => {
+    expect(inflationAdjusted(1000, 0, 10)).toBe(1000);
+    const mild = inflationAdjusted(1000, 0.02, 10);
+    const hotter = inflationAdjusted(1000, 0.05, 10);
+    expect(mild).toBeLessThan(1000);
+    expect(hotter).toBeLessThan(mild);
+    expect(inflationAdjusted(1000, INFLATION_RATE_MIN - 1, 10)).toBe(1000);
+    expect(inflationAdjusted(1000, INFLATION_RATE_MAX + 1, 10)).toBe(inflationAdjusted(1000, INFLATION_RATE_MAX, 10));
+    expect(inflationAdjusted(1000, Number.NaN, 10)).toBe(1000);
   });
 
   it("is deterministic and flat when volatility is zero", () => {
