@@ -6,6 +6,7 @@ import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { PlacedBody } from "./layout";
+import { Planet } from "./Planet";
 
 function Sky({
   bodies,
@@ -61,41 +62,15 @@ function Sky({
           </Suspense>
         </group>
       ))}
-      {bodies.map((body) => {
-        const dimmed = hidden.has(body.symbol);
-        return (
-          <mesh
-            key={body.symbol}
-            position={[body.x, body.y, body.z]}
-            scale={body.radius}
-            onPointerOver={(event) => {
-              if (dimmed) return;
-              event.stopPropagation();
-              onHover(body.symbol);
-            }}
-            onPointerOut={(event) => {
-              event.stopPropagation();
-              onHover(null);
-            }}
-            onClick={(event) => {
-              if (dimmed) return;
-              event.stopPropagation();
-              onSelect(body.symbol);
-            }}
-          >
-            <sphereGeometry args={[1, 24, 24]} />
-            <meshStandardMaterial
-              color={body.color}
-              emissive={body.color}
-              emissiveIntensity={dimmed ? 0.05 : 0.45}
-              roughness={0.42}
-              metalness={0.08}
-              transparent={dimmed}
-              opacity={dimmed ? 0.08 : 1}
-            />
-          </mesh>
-        );
-      })}
+      {bodies.map((body) => (
+        <Planet
+          key={body.symbol}
+          body={body}
+          dimmed={hidden.has(body.symbol)}
+          onHover={onHover}
+          onSelect={onSelect}
+        />
+      ))}
     </group>
   );
 }

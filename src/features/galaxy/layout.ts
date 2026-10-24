@@ -31,6 +31,34 @@ export const SECTOR_COLORS: Record<string, string> = {
   Utilities: "#7ddec8",
 };
 
+export interface PlanetLook {
+  segments: number;
+  ring: number;
+  tilt: number;
+  moon: boolean;
+  metalness: number;
+  roughness: number;
+}
+
+const PLANET_LOOKS: Record<string, PlanetLook> = {
+  Banks: { segments: 28, ring: 0, tilt: 0, moon: false, metalness: 0.55, roughness: 0.22 },
+  Insurance: { segments: 24, ring: 0, tilt: 0, moon: true, metalness: 0.12, roughness: 0.62 },
+  Investing: { segments: 22, ring: 1.42, tilt: 1.15, moon: false, metalness: 0.48, roughness: 0.28 },
+  Tech: { segments: 5, ring: 0, tilt: 0, moon: false, metalness: 0.72, roughness: 0.16 },
+  Energy: { segments: 24, ring: 1.85, tilt: 0.55, moon: false, metalness: 0.18, roughness: 0.5 },
+  Industry: { segments: 7, ring: 1.5, tilt: 1.35, moon: false, metalness: 0.4, roughness: 0.48 },
+  Shops: { segments: 20, ring: 1.4, tilt: 0.9, moon: true, metalness: 0.08, roughness: 0.72 },
+  Materials: { segments: 4, ring: 0, tilt: 0, moon: true, metalness: 0.22, roughness: 0.88 },
+  Telecom: { segments: 6, ring: 1.75, tilt: 1.2, moon: false, metalness: 0.5, roughness: 0.3 },
+  Utilities: { segments: 18, ring: 1.95, tilt: 0.4, moon: true, metalness: 0.14, roughness: 0.55 },
+};
+
+const PLAIN_PLANET: PlanetLook = { segments: 24, ring: 0, tilt: 0, moon: false, metalness: 0.08, roughness: 0.42 };
+
+export function planetLook(sector: string): PlanetLook {
+  return PLANET_LOOKS[sector] ?? PLAIN_PLANET;
+}
+
 function hex(color: string): [number, number, number] {
   const value = color.replace("#", "");
   return [parseInt(value.slice(0, 2), 16), parseInt(value.slice(2, 4), 16), parseInt(value.slice(4, 6), 16)];
