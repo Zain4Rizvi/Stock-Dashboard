@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, futureValue, inflationAdjusted, projectGrowth } from "./compound";
 import { simulateDividend } from "./drip";
-import { monteCarloFan } from "./montecarlo";
+import { monteCarloFan, projectOutcomeRange } from "./montecarlo";
 import { replayInvestment } from "./returns";
 
 describe("finance", () => {
@@ -44,6 +44,33 @@ describe("finance", () => {
     });
     expect(fan[1].p50).toBe(1100);
     expect(fan).toEqual(again);
+  });
+
+  it("splits a simulation band and three scenarios", () => {
+    const shared = { principal: 1000, contributionPerYear: 1200, years: 10, paths: 80, seed: 22 };
+    const slower = projectOutcomeRange({ ...shared, annualReturn: 0.04, volatility: 0.12 });
+    const faster = projectOutcomeRange({ ...shared, annualReturn: 0.08, volatility: 0.12 });
+    expect(slower.low).toBeLessThanOrEqual(slower.middle);
+    expect(slower.middle).toBeLessThanOrEqual(slower.high);
+    expect(faster.low).toBeGreaterThan(slower.low);
+    expect(faster.middle).toBeGreaterThan(slower.middle);
+    expect(faster.high).toBeGreaterThan(slower.high);
+    expect(slower.kind).toBe("simulation");
+    expect(slower.lowLabel).toBe("Low, an unlikely edge");
+    expect(slower.middleLabel).toBe("Middle, where most simulated outcomes landed");
+    expect(slower.highLabel).toBe("High, an unlikely edge");
+
+    const cautious = projectOutcomeRange({ ...shared, annualReturn: 0.04 });
+    const hopeful = projectOutcomeRange({ ...shared, annualReturn: 0.08 });
+    expect(cautious.low).toBeLessThan(cautious.middle);
+    expect(cautious.middle).toBeLessThan(cautious.high);
+    expect(hopeful.low).toBeGreaterThan(cautious.low);
+    expect(hopeful.middle).toBeGreaterThan(cautious.middle);
+    expect(hopeful.high).toBeGreaterThan(cautious.high);
+    expect(cautious.kind).toBe("scenario");
+    expect(cautious.lowLabel).toBe("Conservative scenario");
+    expect(cautious.middleLabel).toBe("Expected scenario");
+    expect(cautious.highLabel).toBe("Optimistic scenario");
   });
 
   it("pays the yield once, and DRIP adds shares", () => {
