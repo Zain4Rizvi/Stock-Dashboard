@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutUniverse, returnToColor, valuationDistance } from "./layout";
+import { layoutUniverse, planetLook, returnToColor, SECTOR_COLORS, valuationDistance } from "./layout";
 
 describe("galaxy layout", () => {
   it("parks a richer price tag farther from its sector sun", () => {
@@ -13,6 +13,20 @@ describe("galaxy layout", () => {
     const richDistance = Math.hypot(rich.x - rich.sectorCenter.x, rich.z - rich.sectorCenter.z);
     expect(richDistance).toBeGreaterThan(cheapDistance);
     expect(valuationDistance(60)).toBeGreaterThan(valuationDistance(10));
+  });
+
+  it("gives every sector its own planet silhouette", () => {
+    const marks = Object.keys(SECTOR_COLORS).map((sector) => {
+      const look = planetLook(sector);
+      const shape = look.segments < 12 ? "faceted" : "smooth";
+      const ring = look.ring === 0 ? "none" : look.ring < 1.6 ? "narrow" : "wide";
+      return `${shape}:${ring}:${look.moon ? "moon" : "none"}`;
+    });
+    expect(new Set(marks).size).toBe(marks.length);
+    expect(planetLook("Energy").ring).toBeGreaterThan(0);
+    expect(planetLook("Tech").segments).toBeLessThan(12);
+    expect(planetLook("Nowhere").ring).toBe(0);
+    expect(planetLook("Nowhere").moon).toBe(false);
   });
 
   it("turns a down year red and an up year green", () => {
