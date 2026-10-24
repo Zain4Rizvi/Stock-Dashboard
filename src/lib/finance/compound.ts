@@ -32,3 +32,14 @@ export function projectGrowth(input: {
 export function futureValue(principal: number, annualRate: number, years: number): number {
   return roundMoney(principal * (1 + annualRate) ** years);
 }
+
+/** Counted dollars compounded at `annualRate` (0.06 means 6%). Non-positive dollars are ignored. */
+export function projectPortfolio(
+  holdings: readonly { dollars: number }[],
+  annualRate: number,
+  years: number,
+): number | null {
+  const principal = holdings.reduce((sum, holding) => (holding.dollars > 0 ? sum + holding.dollars : sum), 0);
+  if (!(principal > 0)) return null;
+  return futureValue(principal, annualRate, years);
+}
