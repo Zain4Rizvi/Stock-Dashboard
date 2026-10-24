@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { projectGrowth, futureValue } from "./compound";
 import { simulateDividend } from "./drip";
 import { monteCarloFan } from "./montecarlo";
-import { replayInvestment } from "./returns";
+import { oneYearReturn, replayInvestment, replayWindow } from "./returns";
 
 describe("finance", () => {
   it("compounds a single year at 10%", () => {
@@ -56,6 +56,56 @@ describe("finance", () => {
     });
     expect(drip[1].shares).toBeGreaterThan(drip[0].shares);
     expect(drip[1].cash).toBe(0);
+  });
+
+  it("defaults a replay window to one year", () => {
+    const now = "2026-10-23";
+    const history = [
+      { date: "2020-01-02", close: 40 },
+      { date: "2025-10-23", close: 100 },
+      { date: "2026-10-23", close: 116 },
+    ];
+    const window = replayWindow(history, undefined, now);
+    expect(window.preset).toBe("1Y");
+    expect(window.end).toBe(now);
+    expect(window.start).toBe("2025-10-23");
+    expect(window.points.map((point) => point.date)).toEqual(["2025-10-23", "2026-10-23"]);
+  });
+
+  it("requests five years ending on the same day", () => {
+    const now = "2026-10-23";
+    const window = replayWindow([], "5Y", now);
+    expect(window.end).toBe(now);
+    expect(window.start).toBe("2021-10-23");
+    expect(window.end).toBe(replayWindow([], undefined, now).end);
+  });
+
+  it("clamps a horizon that is longer than the series", () => {
+    const history = [
+      { date: "2024-06-03", close: 10 },
+      { date: "2025-06-02", close: 12 },
+      { date: "2026-10-23", close: 14 },
+    ];
+    const window = replayWindow(history, "5Y", "2026-10-23");
+    expect(window.points).toEqual(history);
+  });
+
+  it("falls back to one year for an unknown preset", () => {
+    const now = "2026-10-23";
+    const window = replayWindow([], "10Y", now);
+    expect(window.preset).toBe("1Y");
+    expect(window.start).toBe("2025-10-23");
+    expect(window.end).toBe(now);
+  });
+
+  it("keeps a one-year return on the last year of a longer series", () => {
+    expect(
+      oneYearReturn([
+        { date: "2021-10-23", close: 50 },
+        { date: "2025-10-23", close: 100 },
+        { date: "2026-10-23", close: 110 },
+      ]),
+    ).toBe(10);
   });
 
   it("replays a purchase from the first close", () => {
