@@ -1,4 +1,4 @@
-import { annualizedVolatility, oneYearReturn } from "@/lib/finance/returns";
+import { annualizedVolatility, oneYearReturn, replayWindow } from "@/lib/finance/returns";
 import type { Fundamentals, PricePoint } from "@/types/market";
 
 export type GradeLetter = "A" | "B" | "C" | "D" | "F";
@@ -257,7 +257,9 @@ export function scoreStock(input: {
   fundamentals: Fundamentals;
   history: PricePoint[];
 }): Scorecard {
-  const volatility = annualizedVolatility(input.history);
+  const last = input.history[input.history.length - 1]?.date;
+  const recent = last ? replayWindow(input.history, "1Y", last).points : input.history;
+  const volatility = annualizedVolatility(recent);
   const metrics = [
     valuation(input.fundamentals.pe),
     profitability(input.fundamentals.roe),
