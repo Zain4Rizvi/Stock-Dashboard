@@ -1,6 +1,6 @@
 "use client";
 
-import { OrbitControls, Stars, Text } from "@react-three/drei";
+import { Billboard, OrbitControls, Stars, Text } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { Suspense, useEffect, useRef } from "react";
@@ -54,11 +54,13 @@ function Sky({
             <sphereGeometry args={[0.34, 18, 18]} />
             <meshBasicMaterial color={body.sectorColor} />
           </mesh>
-          <Suspense fallback={null}>
-            <Text position={[0, 1.8, 0]} fontSize={0.48} color="#f4f0e6" anchorX="center" anchorY="middle">
-              {body.sector}
-            </Text>
-          </Suspense>
+          <Billboard position={[0, 1.8, 0]}>
+            <Suspense fallback={null}>
+              <Text fontSize={0.48} color="#f4f0e6" anchorX="center" anchorY="middle">
+                {body.sector}
+              </Text>
+            </Suspense>
+          </Billboard>
         </group>
       ))}
       {bodies.map((body) => {
