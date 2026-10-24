@@ -10,7 +10,7 @@ const LINKS = [
   ["/portfolio", "Portfolio"],
   ["/time-machine", "Replay"],
   ["/dividends", "Dividends"],
-  ["/retirement", "Future"],
+  ["/retirement", "Years from now"],
   ["/quiz", "Quiz"],
 ] as const;
 

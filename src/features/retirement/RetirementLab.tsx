@@ -52,7 +52,7 @@ export function RetirementLab() {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       <header>
-        <h1 className="font-display text-5xl">A long, made-up future</h1>
+        <h1 className="font-display text-5xl">Years from now</h1>
         <p className="mt-3 max-w-2xl leading-7 text-mist">
           This is compound growth with a wobble. The band is a classroom range, not a promise about your retirement.
         </p>
