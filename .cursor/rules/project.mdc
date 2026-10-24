@@ -1,0 +1,52 @@
+---
+description: Maple Market vision, boundaries, and architecture. Keep every change aligned with this.
+alwaysApply: true
+---
+
+# Maple Market
+
+A visual, interactive, plain-English stock research tool for young novice Canadian investors (new grads / early 20s), starting with the TSX. It turns confusing market data into something you can see, play with, and understand. Visual quality, smooth interaction, and clean code matter. This is a portfolio piece as well as a learning tool.
+
+**Core loop:** Discover → Understand → Compare → Build → Project.
+
+**Guiding test:** Would a 22-year-old with no finance background understand this and want to keep playing with it? If a feature is just a data table, add a visual and a plain-English layer.
+
+## What this app is NOT
+
+- Not a trading platform. Nothing is bought or sold.
+- Not a price predictor. AI explains the narrative and never promises direction.
+- Not for experts. Prefer plain words over jargon, and define jargon when a number needs it.
+
+Keep a persistent, tasteful "Educational only, not financial advice" notice in the footer and on every AI feature.
+
+## Architecture
+
+```
+src/
+  app/                  # routes + route handlers (thin)
+  features/             # galaxy, scorecard, sentiment, portfolio, timemachine,
+                        # retirement, dividends, compare, heatmap, quiz
+  lib/
+    data/               # MarketDataProvider + adapters + cache + seed
+    llm/                # LLMProvider + adapters + prompts + schemas
+    scoring/            # pure functions: metrics -> grades + plain English
+    finance/            # pure functions: compound growth, Monte Carlo, DRIP
+    storage/            # PersistenceAdapter (localStorage impl)
+  components/ui/
+  types/
+```
+
+- Provider pattern: `MarketDataProvider`, `LLMProvider`, `PersistenceAdapter`, and `Cache` are interfaces. Env vars choose the implementation. Feature code must not import a vendor SDK.
+- All math and scoring is pure and unit-tested without network access.
+- No secrets on the client. API keys live in route handlers only. Read them from `.env.local` (Next also loads `.env`). Document every variable in `.env.example`.
+- TSX tickers use the `.TO` convention in the UI. Map to each provider's symbol format inside the adapter.
+- Live data falls back cache, then seed. The app must work offline from seed data. Synthetic snapshots stay flagged `isSynthetic: true` and show a visible Demo data badge.
+- Validate external API responses and all LLM JSON with Zod.
+- Package manager is pnpm.
+
+## Data rules
+
+- Quotes cache about 15 minutes, history about 6 hours, fundamentals about 24 hours.
+- Track per-provider rate limits. Never burn a daily quota to paint a page.
+- Yahoo Finance (`yahoo-finance2`) is unofficial and for development only.
+- Do not invent fake news headlines. If headlines are unavailable, say so.

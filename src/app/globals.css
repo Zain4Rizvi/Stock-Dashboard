@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --color-ink: #07110d;
+  --color-pine: #102019;
+  --color-canopy: #183328;
+  --color-cream: #f4f0e6;
+  --color-mist: #a9b7ae;
+  --color-maple: #ff5a45;
+  --color-aurora: #5ee0a0;
+  --color-gold: #f0c96a;
+  --color-loss: #ff6d6d;
+}
+
+html {
+  background: #07110d;
+  color: #f4f0e6;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(94, 224, 160, 0.14), transparent 55%),
+    radial-gradient(680px 380px at 100% 0%, rgba(255, 90, 69, 0.12), transparent 46%),
+    #07110d;
+  font-family: var(--font-sans);
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.22;
+  background-image: radial-gradient(rgba(244, 240, 230, 0.18) 0.6px, transparent 0.6px);
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+}
+
+::selection {
+  background: #ff5a45;
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid #f0c96a;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

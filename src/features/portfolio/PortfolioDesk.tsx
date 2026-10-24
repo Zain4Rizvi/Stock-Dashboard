@@ -1,0 +1,140 @@
+"use client";
+
+import { Button } from "@/components/ui/Button";
+import { Disclaimer } from "@/components/ui/Disclaimer";
+import { formatCad, formatPercent } from "@/lib/format";
+import { useDesk } from "@/lib/storage/desk";
+import type { ExplorerItem } from "@/types/market";
+import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import Link from "next/link";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+
+const COLORS = ["#ff5a45", "#5ee0a0", "#f0c96a", "#8eb7ff", "#ff8fbf", "#ffb15e", "#c6a4ff", "#7ddec8"];
+
+function Chip({ item }: { item: ExplorerItem }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.symbol });
+  const add = useDesk((state) => state.addHolding);
+  return (
+    <div ref={setNodeRef} className={`flex items-center gap-2 rounded-full border border-cream/15 bg-pine px-3 py-1 ${isDragging ? "opacity-50" : ""}`}>
+      <button type="button" className="cursor-grab text-sm" {...listeners} {...attributes}>
+        {item.symbol.replace(".TO", "")}
+      </button>
+      <button type="button" className="text-xs text-gold" onClick={() => add(item.symbol)}>
+        Add
+      </button>
+    </div>
+  );
+}
+
+function Basket() {
+  const { setNodeRef, isOver } = useDroppable({ id: "portfolio" });
+  return (
+    <div ref={setNodeRef} className={`rounded-3xl border border-dashed px-4 py-6 text-sm ${isOver ? "border-aurora text-aurora" : "border-cream/20 text-mist"}`}>
+      Drop a company here, or press Add. You are not buying anything.
+    </div>
+  );
+}
+
+export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
+  const holdings = useDesk((state) => state.holdings);
+  const add = useDesk((state) => state.addHolding);
+  const remove = useDesk((state) => state.removeHolding);
+  const setDollars = useDesk((state) => state.setDollars);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const bySymbol = new Map(universe.map((item) => [item.symbol, item]));
+  const rows = holdings
+    .map((holding) => {
+      const item = bySymbol.get(holding.symbol);
+      if (!item) return null;
+      return { ...holding, item };
+    })
+    .filter((row): row is { symbol: string; dollars: number; item: ExplorerItem } => row != null);
+  const total = rows.reduce((sum, row) => sum + row.dollars, 0);
+  const income = rows.reduce((sum, row) => sum + (row.dollars * (row.item.dividendYield ?? 0)) / 100, 0);
+  const past = total
+    ? rows.reduce((sum, row) => sum + (row.dollars / total) * (row.item.oneYearReturn ?? 0), 0)
+    : 0;
+
+  function onDragEnd(event: DragEndEvent) {
+    if (event.over?.id === "portfolio") add(String(event.active.id));
+  }
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
+        <header>
+          <h1 className="font-display text-5xl">A practice portfolio</h1>
+          <p className="mt-3 max-w-2xl leading-7 text-mist">
+            Drag companies into a pile and give each one a pretend dollar amount. This is a sketch of a mix, not an account.
+          </p>
+        </header>
+        <Disclaimer prominent />
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <h2 className="text-sm text-gold">The shelf</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {universe.map((item) => (
+                <Chip key={item.symbol} item={item} />
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4">
+            <Basket />
+            {rows.length === 0 ? null : (
+              <ul className="grid gap-3">
+                {rows.map((row) => (
+                    <li key={row.symbol} className="grid items-center gap-3 rounded-2xl border border-cream/10 p-3 sm:grid-cols-[1fr_auto_auto]">
+                    <div>
+                      <Link href={`/stock/${row.symbol}`} className="font-medium">
+                        {row.item.name}
+                      </Link>
+                      <p className="text-xs text-mist">{row.item.sector}</p>
+                    </div>
+                    <label className="text-xs text-mist">
+                      Pretend dollars
+                      <input
+                        className="mt-1 w-28 rounded-xl border border-cream/15 bg-pine px-2 py-1 text-cream"
+                        type="number"
+                        min={1}
+                        value={row.dollars}
+                        onChange={(event) => setDollars(row.symbol, Number(event.target.value))}
+                      />
+                    </label>
+                    <Button variant="quiet" onClick={() => remove(row.symbol)}>
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        {total > 0 ? (
+          <section className="grid items-center gap-6 rounded-3xl border border-cream/10 bg-pine/70 p-5 md:grid-cols-2">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={rows.map((row) => ({ name: row.symbol, value: row.dollars }))} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
+                    {rows.map((row, index) => (
+                      <Cell key={row.symbol} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => formatCad(Number(value))} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div>
+              <p className="font-display text-3xl">{formatCad(total)} on paper</p>
+              <p className="mt-3 leading-7">
+                If every dividend stayed the same, this mix would pay about {formatCad(income)} in a year. Yields change, and some of these companies pay nothing.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-mist">
+                Over the past year, a mix with these weights would have moved about {formatPercent(past, 1, true)}. That is history wearing a costume. It is not next year.
+              </p>
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </DndContext>
+  );
+}
