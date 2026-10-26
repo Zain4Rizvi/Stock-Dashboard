@@ -7,6 +7,7 @@ import { createSeedProvider } from "./adapters/seed";
 import { createTwelveProvider } from "./adapters/twelve";
 import { createYahooProvider } from "./adapters/yahoo";
 import { createCache, PreferKvCache } from "./cache";
+import { bindMarketKv, boundMarketKv, type KvBinding } from "./cache/kv";
 import { createGateway, type MarketGateway } from "./gateway";
 import type { MarketDataProvider } from "./provider";
 import { SeedFileSchema, type SeedFile } from "./schemas";
@@ -41,7 +42,21 @@ export function createLiveProvider(): MarketDataProvider | null {
 
 let gateway: MarketGateway | null = null;
 
-export function getGateway(): MarketGateway {
+/** A failed bind is not remembered. Build-time static params run before a request has KV. */
+async function attachKv(): Promise<void> {
+  if (process.env.CACHE_DRIVER !== "kv" || boundMarketKv()) return;
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    const kv = (env as { MARKET_KV?: KvBinding }).MARKET_KV;
+    if (kv) bindMarketKv(kv);
+  } catch {
+    /* next dev, tests, and generateStaticParams have no Worker context. */
+  }
+}
+
+export async function getGateway(): Promise<MarketGateway> {
+  await attachKv();
   if (!gateway) {
     gateway = createGateway({
       live: createLiveProvider(),

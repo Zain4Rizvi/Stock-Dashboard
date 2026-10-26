@@ -13,7 +13,7 @@ async function MapBody({
   const raw = typeof params.symbol === "string" ? params.symbol : "";
   const querySymbol = raw ? parseTsxSymbol(raw) : null;
   await connection();
-  const universe = await getGateway().getExplorer();
+  const universe = await (await getGateway()).getExplorer();
   const demo = universe.some((item) => item.freshness === "demo");
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">

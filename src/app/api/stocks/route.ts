@@ -3,6 +3,6 @@ import { connection } from "next/server";
 
 export async function GET() {
   await connection();
-  const rows = await getGateway().getExplorer();
+  const rows = await (await getGateway()).getExplorer();
   return Response.json(rows);
 }

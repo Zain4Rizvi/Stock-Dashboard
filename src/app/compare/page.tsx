@@ -18,7 +18,7 @@ async function CompareBody({
     .filter((symbol): symbol is string => symbol != null)
     .slice(0, 3);
   await connection();
-  const gateway = getGateway();
+  const gateway = await getGateway();
   const universe = await gateway.getExplorer();
   const cards = [];
   for (const symbol of symbols) {

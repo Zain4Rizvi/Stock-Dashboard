@@ -40,7 +40,7 @@ async function stockContext(message: string): Promise<{ stock: CoachStock | null
   const ticker = mentionedTicker(message);
   if (!ticker) return { stock: null, unknownTicker: null };
   try {
-    const snapshot = await getGateway().getSnapshot(ticker);
+    const snapshot = await (await getGateway()).getSnapshot(ticker);
     if (!snapshot) return { stock: null, unknownTicker: ticker };
     const score = scoreStock({
       name: snapshot.stock.name,

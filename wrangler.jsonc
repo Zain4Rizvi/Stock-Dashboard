@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "maple-market",
-  "main": ".open-next/worker.js",
+  "main": "custom-worker.ts",
   "compatibility_date": "2026-10-19",
   // nodejs_compat is required by yahoo-finance2 during the cron. global_fetch_strictly_public is already on the live Worker.
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

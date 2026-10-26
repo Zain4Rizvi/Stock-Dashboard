@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 async function Body() {
   await connection();
-  const universe = await getGateway().getExplorer();
+  const universe = await (await getGateway()).getExplorer();
   return <DividendLab universe={universe} />;
 }
 

@@ -9,8 +9,8 @@ export interface PortfolioLeg {
 
 const ASSUMED_RETURN = 0.06;
 const FALLBACK_VOLATILITY = 0.12;
-/** Trading days can land a few days after a calendar year-ago date. */
-const YEAR_EDGE_DAYS = 7;
+/** A 252-session year starts about two weeks after the calendar anniversary. */
+const YEAR_EDGE_DAYS = 21;
 
 function compareDate(a: string, b: string): number {
   if (a < b) return -1;

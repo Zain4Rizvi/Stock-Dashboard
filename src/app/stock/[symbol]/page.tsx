@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 export async function generateStaticParams() {
-  const rows = await getGateway().getExplorer();
+  const rows = await (await getGateway()).getExplorer();
   return rows.map((row) => ({ symbol: row.symbol }));
 }
 
@@ -16,7 +16,7 @@ async function StockBody({ params }: { params: Promise<{ symbol: string }> }) {
   await connection();
   const parsed = parseTsxSymbol(symbol);
   if (!parsed) notFound();
-  const snapshot = await getGateway().getSnapshot(parsed);
+  const snapshot = await (await getGateway()).getSnapshot(parsed);
   if (!snapshot) notFound();
   const score = scoreStock({
     name: snapshot.stock.name,

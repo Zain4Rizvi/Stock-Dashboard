@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { businessDaysEnding } from "@/lib/data/seed/synthetic";
 import { portfolioOutlook, portfolioValue } from "./portfolio";
 
 describe("portfolioValue", () => {
@@ -144,6 +145,17 @@ describe("portfolioOutlook", () => {
     expect(gained?.fan[10]).toMatchObject({ year: 10, date: "2034-01-01" });
     expect(gained!.fan[5]!.p10).toBeLessThanOrEqual(gained!.fan[5]!.p50);
     expect(gained!.fan[5]!.p50).toBeLessThanOrEqual(gained!.fan[5]!.p90);
+  });
+
+  it("treats 252 sessions as a past year", () => {
+    const dates = businessDaysEnding("2026-10-23", 252);
+    const series = dates.map((date, index) => ({
+      date,
+      value: index === dates.length - 1 ? 110 : 100,
+    }));
+    const outlook = portfolioOutlook({ series });
+    expect(outlook?.assumedRate).toBe(false);
+    expect(outlook?.meanReturn).toBeCloseTo(0.1);
   });
 
   it("fans a quote value when history has not loaded", () => {
