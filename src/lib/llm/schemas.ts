@@ -92,7 +92,7 @@ export const AskBodySchema = z.object({
     .array(
       z.object({
         symbol: z.string().min(1).max(20),
-        dollars: z.number(),
+        shares: z.number(),
       }),
     )
     .max(12)

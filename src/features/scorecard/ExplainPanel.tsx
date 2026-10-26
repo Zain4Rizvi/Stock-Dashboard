@@ -30,15 +30,15 @@ export function ExplainPanel({ symbol }: { symbol: string }) {
 
   return (
     <section className="rounded-3xl border border-cream/10 bg-pine/80 p-5">
-      <h2 className="font-display text-3xl">Say it in a sentence</h2>
+      <h2 className="font-display text-3xl">Briefing</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-mist">
-        This retells the report card in everyday language. It does not know the future.
+        A short read of the numbers on this page. It does not know the future.
       </p>
       <div className="mt-4">
         <Disclaimer prominent />
       </div>
       <Button className="mt-4" onClick={explain} disabled={loading}>
-        {loading ? "Writing…" : "Explain this company"}
+        {loading ? "Writing…" : "Write a briefing"}
       </Button>
       {error ? <p className="mt-3 text-sm text-loss">{error}</p> : null}
       {result ? (

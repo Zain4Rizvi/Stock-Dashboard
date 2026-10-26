@@ -10,13 +10,13 @@ export function AddToPortfolio({ symbol }: { symbol: string }) {
   if (saved) {
     return (
       <Link href="/portfolio" className="rounded-full border border-aurora/40 px-4 py-2 text-sm text-aurora">
-        In your practice portfolio
+        In your portfolio
       </Link>
     );
   }
   return (
     <Button variant="ghost" onClick={() => add(symbol)}>
-      Add to practice portfolio
+      Add to portfolio
     </Button>
   );
 }

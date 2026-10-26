@@ -1,0 +1,50 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "maple-market",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-19",
+  // nodejs_compat is required by yahoo-finance2 during the cron. global_fetch_strictly_public is already on the live Worker.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "maple-market"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "MARKET_KV",
+      "id": "ed0fd3e287d3479d8010d76d119c8e92"
+    }
+  ],
+  "triggers": {
+    "crons": ["0,15,30,45 22 * * 1-5", "0 23 * * 1-5"]
+  },
+  "vars": {
+    "CACHE_DRIVER": "kv"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

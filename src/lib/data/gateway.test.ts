@@ -85,5 +85,32 @@ describe("gateway", () => {
     expect(explorer[0].price).toBe(321);
     expect(explorer[0].isSynthetic).toBe(false);
     expect(explorer[0].source).toBe("yahoo");
+    expect(explorer[0].freshness).toBe("snapshot");
+  });
+
+  it("reads the daily cache when Yahoo is off and does not call it on a page view", async () => {
+    let calls = 0;
+    const cache = new MemoryCache();
+    await cache.set(
+      "quote:RY.TO",
+      { source: "yahoo", data: { ...file.stocks[0].quote, price: 321 } },
+      60,
+    );
+    await cache.set("history:RY.TO", { source: "yahoo", data: file.stocks[0].history }, 60);
+    await cache.set("fundamentals:RY.TO", { source: "yahoo", data: file.stocks[0].fundamentals }, 60);
+    await cache.set("news:RY.TO", { source: "yahoo", data: [] }, 60);
+    const gateway = createGateway({
+      live: failingLive(() => {
+        calls += 1;
+      }),
+      seed: createSeedProvider(file),
+      cache,
+    });
+    const snapshot = await gateway.getSnapshot("RY.TO");
+    expect(calls).toBe(0);
+    expect(snapshot?.quote.price).toBe(321);
+    expect(snapshot?.freshness).toBe("snapshot");
+    const offline = createGateway({ live: null, seed: createSeedProvider(file), cache });
+    expect((await offline.getExplorer())[0].price).toBe(321);
   });
 });

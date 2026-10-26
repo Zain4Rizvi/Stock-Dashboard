@@ -30,6 +30,12 @@ function choiceLabel<T extends string>(options: readonly { id: T; label: string 
   return options.find((option) => option.id === id)?.label ?? id;
 }
 
+function sharePhrase(shares: number): string {
+  const rounded = Math.round(shares * 10_000) / 10_000;
+  const noun = rounded === 1 ? "share" : "shares";
+  return `${rounded} ${noun}`;
+}
+
 function historyBlock(history: AskTurn[]): string {
   if (history.length === 0) return "";
   return history
@@ -61,7 +67,7 @@ export function coachPrompt(input: {
   message: string;
   history: AskTurn[];
   profile: Profile | null;
-  holdings: { symbol: string; dollars: number }[];
+  holdings: { symbol: string; shares: number }[];
   stock: CoachStock | null;
   unknownTicker: string | null;
 }): string {
@@ -71,8 +77,8 @@ export function coachPrompt(input: {
   const shelf =
     input.holdings.length === 0
       ? "Practice portfolio: empty. Do not invent companies."
-      : `Practice portfolio (pretend dollars, not a real account): ${input.holdings
-          .map((holding) => `${holding.symbol} $${holding.dollars}`)
+      : `Practice portfolio (share counts, nothing is bought): ${input.holdings
+          .map((holding) => `${holding.symbol} ${sharePhrase(holding.shares)}`)
           .join(", ")}.`;
   const earlier = historyBlock(input.history);
   return [

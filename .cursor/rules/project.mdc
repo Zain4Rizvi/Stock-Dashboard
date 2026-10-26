@@ -24,7 +24,7 @@ Keep a persistent, tasteful "Educational only, not financial advice" notice in t
 ```
 src/
   app/                  # routes + route handlers (thin)
-  features/             # galaxy, scorecard, sentiment, portfolio, timemachine,
+  features/             # galaxy, scorecard, sentiment, portfolio,
                         # retirement, dividends, compare, heatmap, quiz
   lib/
     data/               # MarketDataProvider + adapters + cache + seed

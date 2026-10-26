@@ -27,7 +27,7 @@ export function MoodPanel({ symbol, news }: { symbol: string; news: NewsItem[] }
 
   return (
     <section className="rounded-3xl border border-cream/10 bg-pine/80 p-5">
-      <h2 className="font-display text-3xl">The mood, not a forecast</h2>
+      <h2 className="font-display text-3xl">Headlines</h2>
       <p className="mt-2 text-sm leading-6 text-mist">
         {news.length === 0
           ? "No headlines are loaded. We will not invent any."

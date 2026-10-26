@@ -73,7 +73,14 @@ export function AskDesk() {
         message,
         history,
         profile: useCoach.getState().profile,
-        holdings: useDesk.getState().holdings.slice(0, 12),
+        holdings: useDesk
+          .getState()
+          .holdings.flatMap((holding) =>
+            typeof holding.shares === "number" && Number.isFinite(holding.shares) && holding.shares > 0
+              ? [{ symbol: holding.symbol, shares: holding.shares }]
+              : [],
+          )
+          .slice(0, 12),
       });
       if (result.mode !== "coach") throw new Error("The teacher got tangled.");
       push({
@@ -112,7 +119,7 @@ export function AskDesk() {
             <>
               Nothing saved yet.{" "}
               <Link href="/portfolio" className="text-gold underline">
-                Add pretend dollars
+                Add shares
               </Link>{" "}
               and they can show up in the fit line.
             </>

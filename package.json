@@ -9,12 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "check:providers": "tsx scripts/check-providers.ts",
-    "seed:generate": "tsx scripts/seed-generate.ts"
+    "seed:generate": "tsx scripts/seed-generate.ts",
+    "refresh": "tsx scripts/refresh.ts"
   },
   "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@react-three/postprocessing": "^3.2.2",
@@ -31,6 +29,7 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.13",
     "@tailwindcss/turbopack": "^4",
     "@types/d3": "^7.4.3",
     "@types/node": "^20",
@@ -42,7 +41,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.152.0"
   },
   "packageManager": "pnpm@10.12.4"
 }

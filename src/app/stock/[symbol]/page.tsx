@@ -1,5 +1,5 @@
 import { ScorecardView } from "@/features/scorecard/Scorecard";
-import { getGateway, liveDataEnabled } from "@/lib/data";
+import { getGateway } from "@/lib/data";
 import { parseTsxSymbol } from "@/lib/data/symbols";
 import { scoreStock } from "@/lib/scoring/score";
 import { connection } from "next/server";
@@ -13,10 +13,10 @@ export async function generateStaticParams() {
 
 async function StockBody({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
-  if (liveDataEnabled()) await connection();
+  await connection();
   const parsed = parseTsxSymbol(symbol);
   if (!parsed) notFound();
-  const snapshot = await getGateway().getSnapshot(parsed, { refresh: liveDataEnabled() });
+  const snapshot = await getGateway().getSnapshot(parsed);
   if (!snapshot) notFound();
   const score = scoreStock({
     name: snapshot.stock.name,
@@ -29,7 +29,7 @@ async function StockBody({ params }: { params: Promise<{ symbol: string }> }) {
 
 export default function Page({ params }: { params: Promise<{ symbol: string }> }) {
   return (
-    <Suspense fallback={<p className="px-4 py-10 text-mist">Opening the books…</p>}>
+    <Suspense fallback={<p className="px-4 py-10 text-mist">Loading…</p>}>
       <StockBody params={params} />
     </Suspense>
   );

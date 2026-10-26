@@ -77,7 +77,9 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
         sector sun means you pay more for each dollar of profit.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {sample ? <DataBadge freshness={demo ? "demo" : sample.freshness} source={sample.source} /> : null}
+        {sample ? (
+          <DataBadge freshness={demo ? "demo" : sample.freshness} source={sample.source} asOf={sample.asOf} />
+        ) : null}
         <div className="flex rounded-full border border-cream/15 p-1 text-xs">
           {(["auto", "3d", "2d"] as const).map((option) => (
             <button

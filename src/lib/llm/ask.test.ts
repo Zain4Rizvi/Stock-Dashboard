@@ -11,7 +11,7 @@ describe("ask language", () => {
     expect(pageBrief(undefined).title).toBe("This screen");
     expect(pageIdFromPath("/")).toBe("explore");
     expect(pageIdFromPath("/stock/RY.TO")).toBe("stock");
-    expect(pageIdFromPath("/time-machine")).toBe("time-machine");
+    expect(pageIdFromPath("/heatmap")).toBe("heatmap");
     expect(pageIdFromPath("/missing")).toBe("other");
 
     for (const id of Object.keys(PAGE_BRIEFS)) {
@@ -28,7 +28,7 @@ describe("ask language", () => {
       message: "What fits me?",
       history: [],
       profile: { goal: "learn", horizon: "ten_plus", drop: "uneasy" },
-      holdings: [{ symbol: "RY.TO", dollars: 500 }],
+      holdings: [{ symbol: "RY.TO", shares: 12 }],
       stock: null,
       unknownTicker: null,
     });
@@ -37,7 +37,8 @@ describe("ask language", () => {
     expect(coach).toContain("I'd feel sick but leave it");
     expect(coach).not.toContain("ten_plus");
     expect(coach).toContain("RY.TO");
-    expect(coach).toContain("$500");
+    expect(coach).toContain("12 shares");
+    expect(coach).not.toContain("$500");
 
     const blank = coachPrompt({
       message: "What fits me?",

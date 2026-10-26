@@ -18,10 +18,10 @@ export const PAGE_BRIEFS = {
     tryThis: "Search a ticker, or click a planet.",
   },
   heatmap: {
-    title: "Heatmap",
+    title: "Stocks",
     brief:
-      "The market as a quilt. Bigger rectangles are bigger companies. Green had a stronger past year, red a weaker one. The percent on a tile is that past year, not a forecast. Click a rectangle to open the company. A demo badge means the figures are practice data.",
-    tryThis: "Click a rectangle to open that company.",
+      "Search a TSX name or ticker, or click a quilt tile, to preview that company's price chart on this page. Bigger rectangles are bigger companies. Green had a stronger past year, red a weaker one. The percent on a tile is that past year, not a forecast. See more opens the company page. Previous steps back through charts already previewed. A demo note means the figures are practice data.",
+    tryThis: "Search a ticker, or click a rectangle to preview its chart.",
   },
   compare: {
     title: "Compare",
@@ -32,19 +32,13 @@ export const PAGE_BRIEFS = {
   portfolio: {
     title: "Portfolio",
     brief:
-      "A practice portfolio. Drag a company into the basket, or press Add. Type pretend dollars for each one. Nothing is bought. You can remove a company. A chart shows how the pretend dollars are split. If yields stayed the same, a line estimates a year of dividend cash. The past-year move of the mix is history. A what-if further down assumes the whole pile grows at 6% a year and you add nothing. That pace is assumed, not promised.",
-    tryThis: "Add one company and type a pretend dollar amount.",
-  },
-  "time-machine": {
-    title: "Replay",
-    brief:
-      "Pick a company, a pretend amount, and how far back to look: the past year or the past 5 years, when those prices exist. The line uses only prices already in the snapshot. It shows what that pretend amount became at the last price. It does not show next year.",
-    tryThis: "Choose a company and switch between the past year and the past 5 years.",
+      "A practice portfolio of share counts. Nothing is bought. Search or add a company, then set how many shares. The chart is the past value of that mix: each past price times the shares you hold, added together. The numbers on top are today's value and how that value changed over the chart. The band after today is a what-if: if the past year repeated, with a high and low range. It is not a promise. If there is not a full year of prices, the what-if uses 6% and says so.",
+    tryThis: "Add a company and change the share count.",
   },
   dividends: {
     title: "Dividends",
     brief:
-      "A dividend is cash a company sends to owners. Pick a company, a starting amount, and a number of years. The checkbox reinvests that cash into more shares. The chart uses today's yield, then imagines a 3% dividend raise and a 4% price rise. That imagination is labeled as such. If a company shows no dividend, the page says your result would come from the share price, not a cheque.",
+      "Pick a company, a starting amount, and a number of years. The checkbox reinvests cash into more shares. The chart shows yearly income from today's yield, then a 3% dividend raise and a 4% price rise. If a company has no dividend, the page says so.",
     tryThis: "Turn reinvesting on and off and watch the bars.",
   },
   retirement: {
@@ -62,8 +56,8 @@ export const PAGE_BRIEFS = {
   stock: {
     title: "Company",
     brief:
-      "One company. You see its sector, a short blurb, the latest price, and today's change. A chart draws the past year. The report card grades price tag, profitability, growth, dividend, and steadiness from the latest numbers, and says they are not a buy rating. You can add the company to the practice portfolio or open Compare. Explain this company retells the report card in everyday language. The mood panel talks about headlines when they exist, and is not a forecast. A glossary defines the words. A demo badge means the figures are practice data.",
-    tryThis: "Read one grade, then the glossary line for that word.",
+      "The company page shows the share price chart and the figures behind five grades: valuation (price-to-earnings), profitability (return on equity), earnings growth, dividend yield and payout, and risk (debt and price swings). Each row shows the number, a grade, and why. Expand a row for the plain-English reason. Grades describe the latest numbers. They are not a buy rating. The briefing and headlines explain those numbers and do not predict a price.",
+    tryThis: "Open one grade and read why it landed there.",
   },
   ask: {
     title: "Ask",

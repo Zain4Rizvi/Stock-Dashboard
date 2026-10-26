@@ -71,6 +71,8 @@ export interface ExplorerItem {
   debtToEquity: number | null;
   payoutRatio: number | null;
   oneYearReturn: number | null;
+  /** Quote timestamp. The badge shows this date. */
+  asOf: string;
   isSynthetic: boolean;
   source: DataSource;
   freshness: Freshness;

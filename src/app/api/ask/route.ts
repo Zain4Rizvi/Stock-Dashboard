@@ -20,12 +20,17 @@ function takeAskSlot(now = Date.now()): boolean {
   return true;
 }
 
-function cleanHoldings(holdings: { symbol: string; dollars: number }[]): { symbol: string; dollars: number }[] {
-  const out: { symbol: string; dollars: number }[] = [];
+function clampShares(shares: number): number {
+  const rounded = Math.round(shares * 10_000) / 10_000;
+  return Math.min(1_000_000, Math.max(0.01, rounded));
+}
+
+function cleanHoldings(holdings: { symbol: string; shares: number }[]): { symbol: string; shares: number }[] {
+  const out: { symbol: string; shares: number }[] = [];
   for (const holding of holdings) {
     const symbol = parseTsxSymbol(holding.symbol);
-    if (!symbol || !Number.isFinite(holding.dollars)) continue;
-    out.push({ symbol, dollars: Math.max(1, Math.min(1_000_000, Math.round(holding.dollars))) });
+    if (!symbol || !Number.isFinite(holding.shares) || !(holding.shares > 0)) continue;
+    out.push({ symbol, shares: clampShares(holding.shares) });
     if (out.length === 12) break;
   }
   return out;

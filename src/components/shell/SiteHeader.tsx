@@ -1,14 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { setNavPending } from "@/components/shell/nav-pending";
+import Link, { useLinkStatus } from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const LINKS = [
   ["/", "Explore"],
-  ["/heatmap", "Heatmap"],
+  ["/heatmap", "Stocks"],
   ["/compare", "Compare"],
   ["/portfolio", "Portfolio"],
-  ["/time-machine", "Replay"],
   ["/dividends", "Dividends"],
   ["/retirement", "Years from now"],
   ["/quiz", "Quiz"],
@@ -17,6 +18,7 @@ const LINKS = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <header className="sticky top-0 z-30 border-b border-cream/10 bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-4 py-3">
@@ -31,9 +33,10 @@ export function SiteHeader() {
               <Link
                 key={href}
                 href={href}
+                onMouseEnter={() => router.prefetch(href)}
                 className={`rounded-full px-3 py-1.5 whitespace-nowrap ${active ? "bg-cream text-ink" : "text-mist hover:text-cream"}`}
               >
-                {label}
+                <NavLabel>{label}</NavLabel>
               </Link>
             );
           })}
@@ -41,4 +44,14 @@ export function SiteHeader() {
       </div>
     </header>
   );
+}
+
+function NavLabel({ children }: { children: string }) {
+  const { pending } = useLinkStatus();
+  useEffect(() => {
+    if (!pending) return;
+    setNavPending(true);
+    return () => setNavPending(false);
+  }, [pending]);
+  return <span className={pending ? "opacity-55" : undefined}>{children}</span>;
 }

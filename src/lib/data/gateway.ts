@@ -133,23 +133,6 @@ export function createGateway(deps: {
       const stocks = await deps.seed.listStocks();
       const rows = await Promise.all(
         stocks.map(async (stock) => {
-          if (!deps.live) {
-            const origin = deps.seed.origin(stock.symbol);
-            const [quote, fundamentals, history] = await Promise.all([
-              deps.seed.getQuote(stock.symbol),
-              deps.seed.getFundamentals(stock.symbol),
-              deps.seed.getHistory(stock.symbol),
-            ]);
-            return toExplorer(
-              stock,
-              quote,
-              fundamentals,
-              history,
-              origin.isSynthetic,
-              origin.source,
-              origin.isSynthetic ? "demo" : "snapshot",
-            );
-          }
           const parts = await loadParts(stock.symbol, false);
           if (!parts) return null;
           return toExplorer(
@@ -159,40 +142,19 @@ export function createGateway(deps: {
             parts.history.data,
             parts.quote.isSynthetic,
             parts.quote.source,
-            parts.quote.isSynthetic ? "demo" : "live",
+            parts.quote.isSynthetic ? "demo" : "snapshot",
           );
         }),
       );
       return rows.filter((row): row is ExplorerItem => row != null);
     },
     async getSnapshot(symbol: string, options?: { refresh?: boolean }) {
-      if (!deps.live) {
-        const stock = await deps.seed.getStock(symbol);
-        if (!stock) return null;
-        const [quote, history, fundamentals, news] = await Promise.all([
-          deps.seed.getQuote(stock.symbol),
-          deps.seed.getHistory(stock.symbol),
-          deps.seed.getFundamentals(stock.symbol),
-          deps.seed.getNews(stock.symbol),
-        ]);
-        const origin = deps.seed.origin(stock.symbol);
-        return {
-          stock,
-          quote,
-          history,
-          fundamentals,
-          news,
-          isSynthetic: origin.isSynthetic,
-          source: origin.source,
-          freshness: origin.isSynthetic ? "demo" : "snapshot",
-        } satisfies Snapshot;
-      }
-      const parts = await loadParts(symbol, options?.refresh ?? false);
+      const refresh = options?.refresh ?? false;
+      const parts = await loadParts(symbol, refresh);
       if (!parts) return null;
       const marketCap = parts.quote.data.marketCap ?? parts.fundamentals.data.marketCap;
       const quote = marketCap == null ? parts.quote.data : { ...parts.quote.data, marketCap: parts.quote.data.marketCap ?? marketCap };
       const synthetic = parts.quote.isSynthetic || parts.history.isSynthetic || parts.fundamentals.isSynthetic;
-      const source = parts.quote.isSynthetic ? parts.quote.source : parts.quote.source;
       return {
         stock: parts.stock,
         quote,
@@ -203,8 +165,8 @@ export function createGateway(deps: {
         },
         news: parts.news.data,
         isSynthetic: synthetic,
-        source,
-        freshness: synthetic ? "demo" : "live",
+        source: parts.quote.source,
+        freshness: synthetic ? "demo" : refresh ? "live" : "snapshot",
       } satisfies Snapshot;
     },
   };
@@ -235,6 +197,7 @@ function toExplorer(
     debtToEquity: fundamentals.debtToEquity,
     payoutRatio: fundamentals.payoutRatio,
     oneYearReturn: oneYearReturn(history),
+    asOf: quote.asOf,
     isSynthetic,
     source,
     freshness,

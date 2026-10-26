@@ -8,6 +8,8 @@ export interface MetricScore {
   label: string;
   grade: GradeLetter | "N/A";
   score: number | null;
+  /** The figure behind the grade, or an em dash when that input is missing. */
+  display: string;
   headline: string;
   detail: string;
 }
@@ -22,6 +24,7 @@ export interface Scorecard {
 }
 
 const LEVERED_BY_DESIGN = new Set(["Banks", "Insurance"]);
+const BLANK = "—";
 
 export function letterGrade(score: number): GradeLetter {
   if (score >= 85) return "A";
@@ -35,25 +38,45 @@ function dollars(pe: number): string {
   return `$${Math.round(pe)}`;
 }
 
+function percentFigure(value: number, digits = 1): string {
+  return `${value.toFixed(digits)}%`;
+}
+
+function yieldDisplay(yieldPercent: number | null): string {
+  if (yieldPercent == null) return BLANK;
+  if (yieldPercent === 0) return "0%";
+  return percentFigure(yieldPercent);
+}
+
+function resilienceDisplay(volatility: number | null, debtToEquity: number | null): string {
+  if (volatility != null) return `${volatility.toFixed(0)}% swing`;
+  if (debtToEquity != null) return `${debtToEquity.toFixed(1)} debt`;
+  return BLANK;
+}
+
 function valuation(pe: number | null): MetricScore {
+  const display = pe == null ? BLANK : pe.toFixed(1);
   if (pe == null) {
     return {
       id: "valuation",
-      label: "Price tag",
+      label: "Valuation",
       grade: "N/A",
       score: null,
+      display,
       headline: "No price-to-earnings number",
-      detail: "Without earnings, the usual price tag (P/E) does not apply. We leave this line blank instead of inventing a grade.",
+      detail: "Without earnings, P/E does not apply. This line stays blank instead of inventing a grade.",
     };
   }
   if (pe < 0) {
     return {
       id: "valuation",
-      label: "Price tag",
+      label: "Valuation",
       grade: "D",
       score: 35,
+      display,
       headline: "The company is losing money",
-      detail: "P/E compares the share price with profit. There is no profit right now, so you would be buying a turnaround story rather than a simple bargain.",
+      detail:
+        "P/E compares the share price with profit. There is no profit right now, so this is a turnaround story rather than a simple bargain.",
     };
   }
   let score = 60;
@@ -68,25 +91,28 @@ function valuation(pe: number | null): MetricScore {
       : "";
   const richNote =
     pe > 28
-      ? " A high price can still work out if profit grows into it. If profit stalls, the same price tag feels heavy."
+      ? " A high price can still work out if profit grows into it. If profit stalls, the same price feels heavy."
       : "";
   return {
     id: "valuation",
-    label: "Price tag",
+    label: "Valuation",
     grade: letterGrade(score),
     score,
+    display,
     headline: `About ${dollars(pe)} for each $1 of yearly profit`,
     detail: `The price-to-earnings ratio is ${pe.toFixed(1)}. You pay about ${dollars(pe)} for each dollar the company earned over the past year.${cheapNote}${richNote}`,
   };
 }
 
 function profitability(roe: number | null): MetricScore {
+  const display = roe == null ? BLANK : percentFigure(roe);
   if (roe == null) {
     return {
       id: "profitability",
       label: "Profitability",
       grade: "N/A",
       score: null,
+      display,
       headline: "No return-on-equity number",
       detail: "Return on equity compares profit with the shareholder money already inside the business. We don't have it here.",
     };
@@ -98,9 +124,7 @@ function profitability(roe: number | null): MetricScore {
   else if (roe <= 25) score = 88;
   else score = 93;
   const headline =
-    roe < 0
-      ? "The business lost money on shareholder funds"
-      : `About ${roe.toFixed(0)}% back on shareholder money`;
+    roe < 0 ? "The business lost money on shareholder funds" : `About ${roe.toFixed(0)}% back on shareholder money`;
   const detail =
     roe > 25
       ? `Return on equity is ${roe.toFixed(1)}%. That is very high. Sometimes it is a wonderful business, and sometimes debt or a one-off gain makes the number look kinder than the everyday reality.`
@@ -110,18 +134,21 @@ function profitability(roe: number | null): MetricScore {
     label: "Profitability",
     grade: letterGrade(score),
     score,
+    display,
     headline,
     detail,
   };
 }
 
 function growth(epsGrowth: number | null): MetricScore {
+  const display = epsGrowth == null ? BLANK : percentFigure(epsGrowth);
   if (epsGrowth == null) {
     return {
       id: "growth",
       label: "Growth",
       grade: "N/A",
       score: null,
+      display,
       headline: "No earnings-growth number",
       detail: "We can't see how fast profit per share has been changing, so this line stays blank.",
     };
@@ -141,18 +168,21 @@ function growth(epsGrowth: number | null): MetricScore {
     label: "Growth",
     grade: letterGrade(score),
     score,
+    display,
     headline: epsGrowth >= 8 ? "Profits have been growing" : epsGrowth >= 0 ? "Profits are roughly steady" : "Profits have been shrinking",
     detail: `${direction} Growth makes a rich price easier to live with. A shrink does the opposite. One stretch of growth is not a promise that the next stretch looks the same.`,
   };
 }
 
 function income(yieldPercent: number | null, payout: number | null): MetricScore {
+  const display = yieldDisplay(yieldPercent);
   if (yieldPercent == null) {
     return {
       id: "income",
       label: "Dividend",
       grade: "N/A",
       score: null,
+      display,
       headline: "No dividend number",
       detail: "We don't know whether this company sends cash to shareholders.",
     };
@@ -163,8 +193,10 @@ function income(yieldPercent: number | null, payout: number | null): MetricScore
       label: "Dividend",
       grade: "N/A",
       score: null,
+      display,
       headline: "No dividend",
-      detail: "This company does not pay a dividend. That is normal for businesses that put profit back into growth. Your result would depend on the share price, not on a cash cheque.",
+      detail:
+        "This company does not pay a dividend. That is normal for businesses that put profit back into growth. The result depends on the share price, not on a cash payment.",
     };
   }
   let score = 68;
@@ -188,10 +220,8 @@ function income(yieldPercent: number | null, payout: number | null): MetricScore
     label: "Dividend",
     grade: letterGrade(score),
     score,
-    headline:
-      payout != null && payout > 100
-        ? "The dividend is larger than the profit"
-        : `About ${yieldPercent.toFixed(1)}% cash yield`,
+    display,
+    headline: payout != null && payout > 100 ? "The dividend is larger than the profit" : `About ${yieldPercent.toFixed(1)}% cash yield`,
     detail: `At the current price, the dividend works out to about ${yieldPercent.toFixed(1)}% a year, if it is kept. On a $100 share that is about $${yieldPercent.toFixed(2)} a year. ${payoutText}${warning}`,
   };
 }
@@ -201,13 +231,15 @@ function resilience(input: {
   debtToEquity: number | null;
   volatility: number | null;
 }): MetricScore {
+  const display = resilienceDisplay(input.volatility, input.debtToEquity);
   if (input.volatility == null && input.debtToEquity == null) {
     return {
       id: "resilience",
-      label: "Steadiness",
+      label: "Risk",
       grade: "N/A",
       score: null,
-      headline: "Not enough to judge steadiness",
+      display,
+      headline: "Not enough to judge risk",
       detail: "We need either price history or a debt figure before this line means anything.",
     };
   }
@@ -217,7 +249,8 @@ function resilience(input: {
   if (input.debtToEquity != null) {
     debtSentence = `Debt-to-equity is ${input.debtToEquity.toFixed(1)}.`;
     if (bank) {
-      debtSentence += " Banks and insurers are built on other people's money, so this ratio looks huge next to a software company. We don't treat that as a red flag by itself.";
+      debtSentence +=
+        " Banks and insurers are built on other people's money, so this ratio looks huge next to a software company. We don't treat that as a red flag by itself.";
     } else if (input.debtToEquity > 3.5) {
       score = Math.min(score, 40);
       debtSentence += " That is a heavy load of borrowing for a company outside the banks. More debt means less room when profits dip.";
@@ -230,22 +263,23 @@ function resilience(input: {
   }
   const volSentence =
     input.volatility == null
-      ? "We don't have enough trading days to describe how jumpy the price has been."
-      : `Over the past year, the price moved enough that a typical year of similar wiggles is about ${input.volatility.toFixed(0)}% up or down. That describes the past. It is not a forecast.`;
+      ? "We don't have enough trading days to describe how much the price has moved."
+      : `Over the past year, the price moved enough that a typical year of similar swings is about ${input.volatility.toFixed(0)}% up or down. That describes the past. It is not a forecast.`;
   return {
     id: "resilience",
-    label: "Steadiness",
+    label: "Risk",
     grade: letterGrade(score),
     score,
-    headline: score >= 70 ? "The past year was relatively calm" : score >= 55 ? "Some jumpiness, nothing extreme" : "The price, or the debt, has been restless",
+    display,
+    headline: score >= 70 ? "The past year was relatively calm" : score >= 55 ? "Some movement, nothing extreme" : "The price or the debt looks stretched",
     detail: `${volSentence} ${debtSentence}`,
   };
 }
 
 function summarize(name: string, overall: GradeLetter | "N/A"): string {
-  if (overall === "N/A") return `We don't have enough numbers to give ${name} a report card.`;
-  if (overall === "A") return `On these textbook measures, ${name} looks like one of the sturdier companies in the set.`;
-  if (overall === "B") return `${name} has a solid report card, with a few lines worth reading twice.`;
+  if (overall === "N/A") return `There are not enough numbers to grade ${name}.`;
+  if (overall === "A") return `On these textbook measures, ${name} scores near the top of the set.`;
+  if (overall === "B") return `${name} scores well on these measures, with a few lines worth reading twice.`;
   if (overall === "C") return `${name} is a mixed picture: some strengths, some question marks.`;
   if (overall === "D") return `Several of the basic measures for ${name} look stretched or weak.`;
   return `The basic measures for ${name} are flashing caution. That is a reason to learn more, not a reason to panic or to bet against the shares.`;
