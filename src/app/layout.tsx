@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { DeskHydrator } from "@/components/shell/DeskHydrator";
 import { SiteFooter } from "@/components/shell/SiteFooter";
 import { SiteHeader } from "@/components/shell/SiteHeader";
+import { PageGuide } from "@/features/guide/PageGuide";
 import "./globals.css";
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SiteHeader />
         </Suspense>
         <div className="flex min-h-0 flex-1 flex-col overflow-auto">{children}</div>
+        <PageGuide />
         <SiteFooter />
       </body>
     </html>

@@ -12,6 +12,7 @@ const LINKS = [
   ["/dividends", "Dividends"],
   ["/retirement", "Years from now"],
   ["/quiz", "Quiz"],
+  ["/ask", "Ask"],
 ] as const;
 
 export function SiteHeader() {
