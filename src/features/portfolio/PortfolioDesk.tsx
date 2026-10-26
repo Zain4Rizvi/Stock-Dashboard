@@ -10,7 +10,7 @@ import { type Holding, useDesk } from "@/lib/storage/desk";
 import type { DataSource, ExplorerItem, Freshness } from "@/types/market";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, CartesianGrid, ComposedChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { z } from "zod";
 
 const HoldingSnapshotSchema = z.object({
@@ -327,73 +327,120 @@ function Horizon({ label, step }: { label: string; step: PortfolioFanStep | unde
   );
 }
 
+function axisTick(value: number | string): string {
+  return String(new Date(Number(value)).getUTCFullYear());
+}
+
 function MixChart({ rows, outlook, hasPast }: { rows: ChartRow[]; outlook: PortfolioOutlook; hasPast: boolean }) {
+  const pastRows = rows.filter((row) => row.actual != null);
+  const forecastRows = rows.filter((row) => row.mid != null);
   return (
-    <>
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows}>
-            <CartesianGrid stroke="rgba(244,240,230,0.06)" />
-            <XAxis
-              dataKey="t"
-              type="number"
-              domain={["dataMin", "dataMax"]}
-              tickFormatter={(value) => String(new Date(Number(value)).getUTCFullYear())}
-              tick={{ fill: "#a9b7ae", fontSize: 11 }}
-              minTickGap={28}
-            />
-            <YAxis
-              tick={{ fill: "#a9b7ae", fontSize: 11 }}
-              width={72}
-              tickFormatter={(value) => formatCompactCad(Number(value))}
-            />
-            <Tooltip
-              content={({ active, payload }) => {
-                const row = payload?.[0]?.payload as ChartRow | undefined;
-                if (!active || !row) return null;
-                return (
-                  <div className="rounded-xl px-3 py-2 text-sm text-cream" style={{ background: "#102019" }}>
-                    <p className="text-mist">{row.label}</p>
-                    {row.actual != null ? <p>Past value {formatCad(row.actual)}</p> : null}
-                    {row.mid != null && row.actual == null ? (
-                      <>
+    <div className="grid gap-6">
+      <div>
+        {hasPast ? (
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={pastRows}>
+                <CartesianGrid stroke="rgba(244,240,230,0.06)" />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  tickFormatter={axisTick}
+                  tick={{ fill: "#a9b7ae", fontSize: 11 }}
+                  minTickGap={28}
+                />
+                <YAxis
+                  tick={{ fill: "#a9b7ae", fontSize: 11 }}
+                  width={72}
+                  domain={["auto", "auto"]}
+                  tickFormatter={(value) => formatCompactCad(Number(value))}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    const row = payload?.[0]?.payload as ChartRow | undefined;
+                    if (!active || !row || row.actual == null) return null;
+                    return (
+                      <div className="rounded-xl px-3 py-2 text-sm text-cream" style={{ background: "#102019" }}>
+                        <p className="text-mist">{row.label}</p>
+                        <p>Past value {formatCad(row.actual)}</p>
+                      </div>
+                    );
+                  }}
+                />
+                <Line dataKey="actual" stroke="#f4f0e6" dot={false} strokeWidth={2.5} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="flex h-40 items-center justify-center text-center text-sm text-mist">
+            No past line yet. Every holding needs a price history.
+          </p>
+        )}
+        {hasPast ? (
+          <ul className="mt-3 flex flex-wrap gap-4 text-xs text-mist">
+            <li className="flex items-center gap-2">
+              <span className="inline-block h-0.5 w-6 bg-cream" />
+              Past value
+            </li>
+          </ul>
+        ) : null}
+      </div>
+      {forecastRows.length > 0 ? (
+        <div className="border-t border-cream/10 pt-5">
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={forecastRows}>
+                <CartesianGrid stroke="rgba(244,240,230,0.06)" />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  tickFormatter={axisTick}
+                  tick={{ fill: "#a9b7ae", fontSize: 11 }}
+                  minTickGap={28}
+                />
+                <YAxis
+                  tick={{ fill: "#a9b7ae", fontSize: 11 }}
+                  width={72}
+                  domain={["auto", "auto"]}
+                  tickFormatter={(value) => formatCompactCad(Number(value))}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    const row = payload?.[0]?.payload as ChartRow | undefined;
+                    if (!active || !row || row.mid == null) return null;
+                    return (
+                      <div className="rounded-xl px-3 py-2 text-sm text-cream" style={{ background: "#102019" }}>
+                        <p className="text-mist">{row.label}</p>
                         <p>Low {formatCad(row.low ?? 0)}</p>
                         <p>Middle {formatCad(row.mid)}</p>
                         <p>High {formatCad(row.high ?? 0)}</p>
-                      </>
-                    ) : null}
-                  </div>
-                );
-              }}
-            />
-            <Area dataKey="p10" stackId="band" stroke="none" fill="transparent" connectNulls={false} />
-            <Area dataKey="span" stackId="band" stroke="none" fill="#f0c96a" fillOpacity={0.22} connectNulls={false} />
-            <Line dataKey="mid" stroke="#f0c96a" strokeDasharray="6 4" dot={false} strokeWidth={2} connectNulls={false} />
-            <Line dataKey="actual" stroke="#f4f0e6" dot={false} strokeWidth={2.5} connectNulls={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="mt-3 flex flex-wrap gap-4 text-xs text-mist">
-        {hasPast ? (
-          <li className="flex items-center gap-2">
-            <span className="inline-block h-0.5 w-6 bg-cream" />
-            Past value
-          </li>
-        ) : (
-          <li>No past line yet. Every holding needs a price history.</li>
-        )}
-        <li className="flex items-center gap-2">
-          <span className="inline-block h-3 w-6 rounded-sm bg-gold/30" />
-          What-if range
-        </li>
-      </ul>
-      {outlook.assumedRate ? (
-        <p className="mt-3 text-sm leading-6 text-mist">
-          There is not a full year of prices for this mix, so the what-if uses 6% a year.
-        </p>
+                      </div>
+                    );
+                  }}
+                />
+                <Area dataKey="p10" stackId="band" stroke="none" fill="transparent" connectNulls={false} />
+                <Area dataKey="span" stackId="band" stroke="none" fill="#f0c96a" fillOpacity={0.22} connectNulls={false} />
+                <Line dataKey="mid" stroke="#f0c96a" strokeDasharray="6 4" dot={false} strokeWidth={2} connectNulls={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-4 text-xs text-mist">
+            <li className="flex items-center gap-2">
+              <span className="inline-block h-3 w-6 rounded-sm bg-gold/30" />
+              What-if range
+            </li>
+          </ul>
+          {outlook.assumedRate ? (
+            <p className="mt-3 text-sm leading-6 text-mist">
+              There is not a full year of prices for this mix, so the what-if uses 6% a year.
+            </p>
+          ) : null}
+          <p className="mt-2 text-sm leading-6 text-mist">If the past year repeated. A range, not a promise.</p>
+        </div>
       ) : null}
-      <p className="mt-2 text-sm leading-6 text-mist">If the past year repeated. A range, not a promise.</p>
-    </>
+    </div>
   );
 }
 
