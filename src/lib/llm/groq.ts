@@ -13,7 +13,7 @@ export function createGroqProvider(): LLMProvider {
     async complete<T>(prompt: string, schema: ZodType<T>): Promise<T> {
       const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) throw new Error("GROQ_API_KEY is not set");
-      const model = process.env.LLM_MODEL || "llama-3.3-70b-versatile";
+      const model = process.env.LLM_MODEL || "openai/gpt-oss-120b";
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         signal: AbortSignal.timeout(20000),

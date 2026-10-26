@@ -6,7 +6,7 @@ import { createFmpProvider } from "./adapters/fmp";
 import { createSeedProvider } from "./adapters/seed";
 import { createTwelveProvider } from "./adapters/twelve";
 import { createYahooProvider } from "./adapters/yahoo";
-import { createCache } from "./cache";
+import { createCache, PreferKvCache } from "./cache";
 import { createGateway, type MarketGateway } from "./gateway";
 import type { MarketDataProvider } from "./provider";
 import { SeedFileSchema, type SeedFile } from "./schemas";
@@ -46,7 +46,7 @@ export function getGateway(): MarketGateway {
     gateway = createGateway({
       live: createLiveProvider(),
       seed: createSeedProvider(loadSeedFile()),
-      cache: createCache(),
+      cache: new PreferKvCache(createCache(process.env.CACHE_DRIVER === "kv" ? "memory" : undefined)),
     });
   }
   return gateway;

@@ -83,4 +83,28 @@ describe("scoreStock", () => {
     const text = JSON.stringify(card);
     expect(text.toLowerCase()).not.toMatch(/you should buy|strong buy|will go up/);
   });
+
+  it("shows the P/E as the valuation figure", () => {
+    const card = scoreStock({
+      name: "Dollarama",
+      sector: "Shops",
+      fundamentals: fundamentals({ pe: 12.4 }),
+      history: history(100, 0.04),
+    });
+    const valuation = card.metrics.find((metric) => metric.id === "valuation");
+    expect(valuation?.label).toBe("Valuation");
+    expect(valuation?.display).toBe("12.4");
+  });
+
+  it("shows a zero dividend yield as 0% and leaves the grade blank", () => {
+    const card = scoreStock({
+      name: "Shopify",
+      sector: "Tech",
+      fundamentals: fundamentals({ dividendYield: 0, payoutRatio: 0, symbol: "SHOP.TO" }),
+      history: history(100, 0.2),
+    });
+    const income = card.metrics.find((metric) => metric.id === "income");
+    expect(income?.display).toBe("0%");
+    expect(income?.grade).toBe("N/A");
+  });
 });

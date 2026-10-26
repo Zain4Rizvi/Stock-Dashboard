@@ -4,7 +4,6 @@ import { returnToColor } from "@/features/galaxy/layout";
 import { formatPercent } from "@/lib/format";
 import type { ExplorerItem } from "@/types/market";
 import { hierarchy, treemap } from "d3";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 interface Leaf {
@@ -14,8 +13,15 @@ interface Leaf {
   children?: Leaf[];
 }
 
-export function Heatmap({ universe }: { universe: ExplorerItem[] }) {
-  const router = useRouter();
+export function Heatmap({
+  universe,
+  selected,
+  onSelect,
+}: {
+  universe: ExplorerItem[];
+  selected: string | null;
+  onSelect: (symbol: string) => void;
+}) {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   const width = 1080;
@@ -47,7 +53,7 @@ export function Heatmap({ universe }: { universe: ExplorerItem[] }) {
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px] w-full" role="img" aria-label="Market heatmap sized by company value and colored by the past year">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px] w-full" aria-label="Market quilt sized by company value and colored by the past year">
         {leaves.map((leaf) => {
           const item = leaf.data.item;
           if (!item) return null;
@@ -57,16 +63,39 @@ export function Heatmap({ universe }: { universe: ExplorerItem[] }) {
           const y1 = leaf.y1 ?? 0;
           const w = x1 - x0;
           const h = y1 - y0;
+          const active = item.symbol === selected;
+          const pastYear = formatPercent(item.oneYearReturn ?? 0, 0, true);
           return (
-            <g key={item.symbol} transform={`translate(${x0},${y0})`} className="cursor-pointer" onClick={() => router.push(`/stock/${item.symbol}`)}>
-              <rect width={w} height={h} rx={8} fill={returnToColor(item.oneYearReturn ?? 0)} />
+            <g
+              key={item.symbol}
+              transform={`translate(${x0},${y0})`}
+              className="cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-pressed={active}
+              aria-label={`${item.name}, ${item.symbol}, past year ${pastYear}`}
+              onClick={() => onSelect(item.symbol)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                onSelect(item.symbol);
+              }}
+            >
+              <rect
+                width={w}
+                height={h}
+                rx={8}
+                fill={returnToColor(item.oneYearReturn ?? 0)}
+                stroke={active ? "#f4f0e6" : "transparent"}
+                strokeWidth={active ? 4 : 0}
+              />
               {w > 54 && h > 36 ? (
                 <>
                   <text x={10} y={22} fill="#07110d" fontSize={14} fontWeight={650}>
                     {item.symbol.replace(".TO", "")}
                   </text>
                   <text x={10} y={40} fill="#07110d" fontSize={12}>
-                    {formatPercent(item.oneYearReturn ?? 0, 0, true)}
+                    {pastYear}
                   </text>
                 </>
               ) : null}

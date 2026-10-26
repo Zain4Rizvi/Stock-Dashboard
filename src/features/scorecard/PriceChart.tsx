@@ -21,12 +21,12 @@ export function PriceChart({ history }: { history: PricePoint[] }) {
     <section className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-3xl">The past year, drawn</h2>
-          <p className="mt-1 max-w-xl text-sm leading-6 text-mist">
-            {data.length > 1 && change != null
-              ? `From ${data[0].date} to ${data[data.length - 1].date}, the price went from ${formatCad(first)} to ${formatCad(last)} (${formatPercent(change, 1, true)}). That already happened. It is not a forecast.`
-              : "Not enough prices to draw a line."}
-          </p>
+          <h2 className="font-display text-3xl">Price</h2>
+          {data.length > 1 && change != null ? (
+            <p className={`mt-1 text-sm ${up ? "text-aurora" : "text-loss"}`}>{formatPercent(change, 1, true)}</p>
+          ) : (
+            <p className="mt-1 text-sm text-mist">Not enough prices yet.</p>
+          )}
         </div>
         <div className="flex gap-1 rounded-full border border-cream/15 p-1">
           {RANGES.map((option) => (

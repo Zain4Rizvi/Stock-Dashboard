@@ -1,5 +1,5 @@
 import { CompareDesk } from "@/features/compare/CompareDesk";
-import { getGateway, liveDataEnabled } from "@/lib/data";
+import { getGateway } from "@/lib/data";
 import { parseTsxSymbol } from "@/lib/data/symbols";
 import { scoreStock } from "@/lib/scoring/score";
 import { connection } from "next/server";
@@ -17,7 +17,7 @@ async function CompareBody({
     .map((symbol) => parseTsxSymbol(symbol))
     .filter((symbol): symbol is string => symbol != null)
     .slice(0, 3);
-  if (liveDataEnabled()) await connection();
+  await connection();
   const gateway = getGateway();
   const universe = await gateway.getExplorer();
   const cards = [];

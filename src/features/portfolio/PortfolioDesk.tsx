@@ -1,188 +1,475 @@
 "use client";
 
+import { DataBadge } from "@/components/ui/DataBadge";
 import { Button } from "@/components/ui/Button";
 import { Disclaimer } from "@/components/ui/Disclaimer";
-import { projectPortfolio } from "@/lib/finance/compound";
-import { formatCad, formatPercent } from "@/lib/format";
-import { useDesk } from "@/lib/storage/desk";
-import type { ExplorerItem } from "@/types/market";
-import { DndContext, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { PricePointSchema, QuoteSchema, StockSchema } from "@/lib/data/schemas";
+import { portfolioOutlook, portfolioValue, type PortfolioFanStep, type PortfolioOutlook } from "@/lib/finance/portfolio";
+import { formatCad, formatCompactCad, formatPercent } from "@/lib/format";
+import { type Holding, useDesk } from "@/lib/storage/desk";
+import type { DataSource, ExplorerItem, Freshness } from "@/types/market";
 import Link from "next/link";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useEffect, useMemo, useState } from "react";
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { z } from "zod";
 
-const COLORS = ["#ff5a45", "#5ee0a0", "#f0c96a", "#8eb7ff", "#ff8fbf", "#ffb15e", "#c6a4ff", "#7ddec8"];
-const ASSUMED_GROWTH = 0.06;
-const HORIZONS = [1, 5, 10] as const;
+const HoldingSnapshotSchema = z.object({
+  stock: StockSchema.pick({ name: true }),
+  quote: QuoteSchema.pick({ price: true }),
+  history: z.array(PricePointSchema),
+  isSynthetic: z.boolean(),
+  source: z.enum(["synthetic", "yahoo", "fmp", "twelvedata", "alphavantage"]),
+  freshness: z.enum(["demo", "snapshot", "live"]),
+});
 
-function Chip({ item }: { item: ExplorerItem }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: item.symbol });
-  const add = useDesk((state) => state.addHolding);
-  return (
-    <div ref={setNodeRef} className={`flex items-center gap-2 rounded-full border border-cream/15 bg-pine px-3 py-1 ${isDragging ? "opacity-50" : ""}`}>
-      <button type="button" className="cursor-grab text-sm" {...listeners} {...attributes}>
-        {item.symbol.replace(".TO", "")}
-      </button>
-      <button type="button" className="text-xs text-gold" onClick={() => add(item.symbol)}>
-        Add
-      </button>
-    </div>
-  );
+type HoldingSnapshot = z.infer<typeof HoldingSnapshotSchema>;
+
+type ChartRow = {
+  t: number;
+  label: string;
+  actual: number | null;
+  p10: number | null;
+  span: number | null;
+  mid: number | null;
+  low: number | null;
+  high: number | null;
+};
+
+function utcTime(iso: string): number {
+  return Date.parse(`${iso}T00:00:00Z`);
 }
 
-function Basket() {
-  const { setNodeRef, isOver } = useDroppable({ id: "portfolio" });
-  return (
-    <div ref={setNodeRef} className={`rounded-3xl border border-dashed px-4 py-6 text-sm ${isOver ? "border-aurora text-aurora" : "border-cream/20 text-mist"}`}>
-      Drop a company here, or press Add. You are not buying anything.
-    </div>
-  );
+function chartRows(series: { date: string; value: number }[], fan: PortfolioFanStep[]): ChartRow[] {
+  const history: ChartRow[] = series.map((point) => ({
+    t: utcTime(point.date),
+    label: point.date,
+    actual: point.value,
+    p10: null,
+    span: null,
+    mid: null,
+    low: null,
+    high: null,
+  }));
+  const later = fan.filter((step) => step.year > 0);
+  const forecast: ChartRow[] = later.map((step) => ({
+    t: utcTime(step.date),
+    label: step.date,
+    actual: null,
+    p10: step.p10,
+    span: Math.max(0, step.p90 - step.p10),
+    mid: step.p50,
+    low: step.p10,
+    high: step.p90,
+  }));
+  const anchor = fan.find((step) => step.year === 0);
+  if (!anchor) return [...history, ...forecast];
+  const anchorRow: ChartRow = {
+    t: utcTime(anchor.date),
+    label: anchor.date,
+    actual: history.length > 0 ? history[history.length - 1]!.actual : null,
+    p10: anchor.p10,
+    span: Math.max(0, anchor.p90 - anchor.p10),
+    mid: anchor.p50,
+    low: anchor.p10,
+    high: anchor.p90,
+  };
+  if (history.length > 0) history[history.length - 1] = anchorRow;
+  else forecast.unshift(anchorRow);
+  return [...history, ...forecast];
+}
+
+function isAbort(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
   const holdings = useDesk((state) => state.holdings);
   const add = useDesk((state) => state.addHolding);
   const remove = useDesk((state) => state.removeHolding);
-  const setDollars = useDesk((state) => state.setDollars);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const bySymbol = new Map(universe.map((item) => [item.symbol, item]));
-  const rows = holdings
-    .map((holding) => {
-      const item = bySymbol.get(holding.symbol);
-      if (!item) return null;
-      return { ...holding, item };
-    })
-    .filter((row): row is { symbol: string; dollars: number; item: ExplorerItem } => row != null);
-  const total = rows.reduce((sum, row) => sum + row.dollars, 0);
-  const income = rows.reduce((sum, row) => sum + (row.dollars * (row.item.dividendYield ?? 0)) / 100, 0);
-  const past = total
-    ? rows.reduce((sum, row) => sum + (row.dollars / total) * (row.item.oneYearReturn ?? 0), 0)
-    : 0;
+  const setShares = useDesk((state) => state.setShares);
+  const [ready, setReady] = useState(false);
+  const [query, setQuery] = useState("");
+  const [loaded, setLoaded] = useState<Record<string, HoldingSnapshot | null>>({});
+  const symbolKey = holdings.map((holding) => holding.symbol).join("\n");
+  const bySymbol = useMemo(() => new Map(universe.map((item) => [item.symbol, item])), [universe]);
 
-  function onDragEnd(event: DragEndEvent) {
-    if (event.over?.id === "portfolio") add(String(event.active.id));
-  }
+  useEffect(() => {
+    const finish = () => setReady(true);
+    if (useDesk.persist.hasHydrated()) finish();
+    const unsub = useDesk.persist.onFinishHydration(finish);
+    void useDesk.persist.rehydrate();
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const symbols = symbolKey.length > 0 ? symbolKey.split("\n") : [];
+    if (symbols.length === 0) return;
+    const controller = new AbortController();
+    let cancelled = false;
+    void Promise.all(
+      symbols.map(async (symbol) => {
+        try {
+          const response = await fetch(`/api/stocks/${encodeURIComponent(symbol)}?refresh=0`, { signal: controller.signal });
+          if (!response.ok) return [symbol, null] as const;
+          const parsed = HoldingSnapshotSchema.safeParse(await response.json());
+          return [symbol, parsed.success ? parsed.data : null] as const;
+        } catch (error) {
+          if (isAbort(error)) throw error;
+          return [symbol, null] as const;
+        }
+      }),
+    )
+      .then((rows) => {
+        if (cancelled) return;
+        setLoaded(Object.fromEntries(rows));
+      })
+      .catch((error: unknown) => {
+        if (cancelled || isAbort(error)) return;
+        if (!cancelled) setLoaded(Object.fromEntries(symbols.map((symbol) => [symbol, null])));
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [ready, symbolKey]);
+
+  useEffect(() => {
+    if (!ready) return;
+    for (const holding of holdings) {
+      if (typeof holding.shares === "number") {
+        if (holding.dollars != null) setShares(holding.symbol, holding.shares);
+        continue;
+      }
+      if (typeof holding.dollars !== "number" || !Number.isFinite(holding.dollars)) continue;
+      const price = loaded[holding.symbol]?.quote.price ?? bySymbol.get(holding.symbol)?.price;
+      if (price == null || !Number.isFinite(price)) continue;
+      const shares = price > 0 ? Math.max(1, Math.round(holding.dollars / price)) : 1;
+      setShares(holding.symbol, shares);
+    }
+  }, [ready, holdings, loaded, bySymbol, setShares]);
+
+  const settled = holdings.every((holding) => Object.prototype.hasOwnProperty.call(loaded, holding.symbol));
+  const model = useMemo(() => {
+    if (!settled) return { series: [] as { date: string; value: number }[], outlook: null as PortfolioOutlook | null };
+    return mixModel(holdings, loaded, bySymbol);
+  }, [settled, holdings, loaded, bySymbol]);
+
+  const matches = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return [];
+    return universe.filter((item) => item.symbol.toLowerCase().includes(needle) || item.name.toLowerCase().includes(needle));
+  }, [query, universe]);
+
+  if (!ready) return <p className="px-4 py-10 text-mist">Opening your portfolio…</p>;
+
+  const badge = mixBadge(holdings, loaded, bySymbol);
+  const rows = chartRows(model.series, model.outlook?.fan ?? []);
+  const showChart = holdings.length > 0 && settled && rows.length > 0;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
-        <header>
-          <h1 className="font-display text-5xl">A practice portfolio</h1>
-          <p className="mt-3 max-w-2xl leading-7 text-mist">
-            This page is a sandbox for a portfolio: the companies you pick, and how many pretend dollars sit in each one. A portfolio is just that mix. A what-if further down asks what that pile would be if it grew at a pace we assumed. You are not opening an account.
-          </p>
-        </header>
-        <Disclaimer prominent />
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <h2 className="text-sm text-gold">The shelf</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {universe.map((item) => (
-                <Chip key={item.symbol} item={item} />
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-4">
-            <Basket />
-            {rows.length === 0 ? null : (
-              <ul className="grid gap-3">
-                {rows.map((row) => (
-                    <li key={row.symbol} className="grid items-center gap-3 rounded-2xl border border-cream/10 p-3 sm:grid-cols-[1fr_auto_auto]">
-                    <div>
-                      <Link href={`/stock/${row.symbol}`} className="font-medium">
-                        {row.item.name}
-                      </Link>
-                      <p className="text-xs text-mist">{row.item.sector}</p>
-                    </div>
-                    <label className="text-xs text-mist">
-                      Pretend dollars
-                      <input
-                        className="mt-1 w-28 rounded-xl border border-cream/15 bg-pine px-2 py-1 text-cream"
-                        type="number"
-                        min={1}
-                        value={row.dollars}
-                        onChange={(event) => setDollars(row.symbol, Number(event.target.value))}
-                      />
-                    </label>
-                    <Button variant="quiet" onClick={() => remove(row.symbol)}>
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+    <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-5xl">Portfolio</h1>
+          <p className="mt-3 max-w-2xl leading-7 text-mist">A practice mix of shares. Nothing is bought.</p>
         </div>
-        {total > 0 ? (
-          <section className="grid items-center gap-6 rounded-3xl border border-cream/10 bg-pine/70 p-5 md:grid-cols-2">
-            <div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={rows.map((row) => ({ name: row.symbol, value: row.dollars }))} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
-                      {rows.map((row, index) => (
-                        <Cell key={row.symbol} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => formatCad(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <ul className="flex flex-wrap justify-center gap-3 text-xs text-mist">
-                {rows.map((row, index) => (
-                  <li key={row.symbol} className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[index % COLORS.length] }} aria-hidden="true" />
-                    {row.symbol}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="font-display text-3xl">{formatCad(total)} on paper</p>
-              <p className="mt-3 leading-7">
-                If every company kept paying the same cash dividend, this mix would pay about {formatCad(income)} in a year. A dividend is cash some companies hand out. Some of these pay nothing, and the amounts change.
-              </p>
-              <p className="mt-3 text-sm leading-6 text-mist">
-                Over the past year, a mix with these weights would have moved about {formatPercent(past, 1, true)}. Weight means a company&apos;s share of the pile. That is history wearing a costume. It is not next year.
-              </p>
-              <PortfolioForecast rows={rows} />
-            </div>
-          </section>
+        {badge ? <DataBadge freshness={badge.freshness} source={badge.source} /> : null}
+      </header>
+      <Disclaimer prominent />
+      {model.outlook ? <Summary outlook={model.outlook} /> : null}
+      <section className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
+        {holdings.length === 0 ? (
+          <p className="flex h-80 items-center justify-center text-sm text-mist">Add a stock below.</p>
+        ) : !settled ? (
+          <p className="flex h-80 items-center justify-center text-sm text-mist">Loading prices…</p>
+        ) : showChart && model.outlook ? (
+          <MixChart rows={rows} outlook={model.outlook} hasPast={model.series.length > 1} />
+        ) : (
+          <p className="flex h-80 items-center justify-center text-center text-sm text-mist">
+            {holdings.some((holding) => holding.shares == null)
+              ? "Waiting for a price to turn a saved dollar amount into shares."
+              : "No prices for this mix yet."}
+          </p>
+        )}
+      </section>
+      {holdings.length > 0 ? (
+        <section className="grid gap-3">
+          <h2 className="text-sm text-mist">Holdings</h2>
+          <ul className="grid gap-3">
+            {holdings.map((holding) => (
+              <HoldingRow
+                key={holding.symbol}
+                holding={holding}
+                name={loaded[holding.symbol]?.stock.name ?? bySymbol.get(holding.symbol)?.name ?? holding.symbol}
+                price={loaded[holding.symbol]?.quote.price ?? bySymbol.get(holding.symbol)?.price ?? null}
+                onShares={(shares) => setShares(holding.symbol, shares)}
+                onRemove={() => remove(holding.symbol)}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      <section>
+        <label className="block text-sm text-mist">
+          Add a company
+          <input
+            className="mt-1 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+            placeholder="Search RY.TO or Royal Bank"
+            value={query}
+            autoComplete="off"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {query.trim() && matches.length === 0 ? <p className="mt-3 text-sm text-mist">No match.</p> : null}
+        {matches.length > 0 ? (
+          <ul className="mt-3 grid gap-2">
+            {matches.slice(0, 8).map((item) => {
+              const held = holdings.some((holding) => holding.symbol === item.symbol);
+              return (
+                <li key={item.symbol} className="flex items-center justify-between gap-3 rounded-2xl border border-cream/10 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{item.name}</p>
+                    <p className="text-xs text-mist">{item.symbol}</p>
+                  </div>
+                  <Button variant="ghost" disabled={held} onClick={() => add(item.symbol)}>
+                    {held ? "Added" : "Add"}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
         ) : null}
-      </div>
-    </DndContext>
+        {matches.length > 8 ? <p className="mt-2 text-xs text-mist">Showing 8 matches. Type more to narrow them.</p> : null}
+      </section>
+    </div>
   );
 }
 
-function PortfolioForecast({ rows }: { rows: { dollars: number }[] }) {
-  const forecast = HORIZONS.flatMap((years) => {
-    const value = projectPortfolio(rows, ASSUMED_GROWTH, years);
-    return value == null ? [] : [{ years, value }];
+function mixModel(
+  holdings: Holding[],
+  loaded: Record<string, HoldingSnapshot | null>,
+  bySymbol: Map<string, ExplorerItem>,
+): { series: { date: string; value: number }[]; outlook: PortfolioOutlook | null } {
+  const shareHoldings = holdings.filter(
+    (holding): holding is Holding & { shares: number } => typeof holding.shares === "number" && holding.shares > 0,
+  );
+  const legs = shareHoldings.flatMap((holding) => {
+    const history = loaded[holding.symbol]?.history ?? [];
+    return history.length > 0 ? [{ shares: holding.shares, history }] : [];
   });
-  if (forecast.length === 0) return null;
-  const tallest = Math.max(...forecast.map((row) => row.value));
-  const pace = formatPercent(ASSUMED_GROWTH * 100, 0);
+  const series = shareHoldings.length > 0 && legs.length === shareHoldings.length ? portfolioValue(legs) : [];
+  let quoteSum = 0;
+  for (const holding of shareHoldings) {
+    const price = loaded[holding.symbol]?.quote.price ?? bySymbol.get(holding.symbol)?.price;
+    if (price != null && price > 0) quoteSum += holding.shares * price;
+  }
+  const outlook = portfolioOutlook({
+    series,
+    currentValue: quoteSum,
+    anchorDate: new Date().toISOString().slice(0, 10),
+  });
+  return { series, outlook };
+}
+
+function mixBadge(
+  holdings: Holding[],
+  loaded: Record<string, HoldingSnapshot | null>,
+  bySymbol: Map<string, ExplorerItem>,
+): { freshness: Freshness; source: DataSource } | null {
+  for (const holding of holdings) {
+    const snap = loaded[holding.symbol];
+    if (snap && (snap.isSynthetic || snap.freshness === "demo")) return { freshness: "demo", source: snap.source };
+    const item = bySymbol.get(holding.symbol);
+    if (item && (item.isSynthetic || item.freshness === "demo")) return { freshness: "demo", source: item.source };
+  }
+  for (const holding of holdings) {
+    const snap = loaded[holding.symbol];
+    if (snap) return { freshness: snap.freshness, source: snap.source };
+  }
+  return null;
+}
+
+function Summary({ outlook }: { outlook: PortfolioOutlook }) {
+  const year5 = outlook.fan.find((step) => step.year === 5);
+  const year10 = outlook.fan.find((step) => step.year === 10);
+  const tone = outlook.change == null ? "text-mist" : outlook.change > 0 ? "text-aurora" : outlook.change < 0 ? "text-loss" : "text-mist";
   return (
-    <div className="mt-5 grid gap-3">
-      <h2 className="font-display text-2xl">If it grew at {pace} a year</h2>
-      <p className="text-sm leading-6 text-mist">
-        What-if, not a promise. This assumes the whole pile grows at that pace and you add nothing. The market does not owe you that.
+    <section className="grid gap-4 rounded-3xl border border-cream/10 bg-pine/70 p-5 sm:grid-cols-3">
+      <div>
+        <p className="text-sm text-mist">Value now</p>
+        <p className="mt-1 font-display text-3xl">{formatCad(outlook.value)}</p>
+        {outlook.change != null ? (
+          <p className={`mt-1 text-sm ${tone}`}>
+            {outlook.change > 0 ? "+" : ""}
+            {formatCad(outlook.change)} ({formatPercent(outlook.changePercent ?? Number.NaN, 1, true)}) over this chart
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-mist">Change over this chart is not available yet.</p>
+        )}
+      </div>
+      <Horizon label="In 5 years" step={year5} />
+      <Horizon label="In 10 years" step={year10} />
+    </section>
+  );
+}
+
+function Horizon({ label, step }: { label: string; step: PortfolioFanStep | undefined }) {
+  if (!step) return null;
+  return (
+    <div>
+      <p className="text-sm text-mist">{label}</p>
+      <p className="mt-1 font-display text-3xl">{formatCad(step.p50)}</p>
+      <p className="mt-1 text-sm text-mist">
+        Median · {formatCad(step.p10)} – {formatCad(step.p90)}
       </p>
-      <ul className="grid gap-2">
-        {forecast.map((row) => (
-          <li key={row.years}>
-            <div className="flex justify-between text-sm">
-              <span>{row.years === 1 ? "1 year" : `${row.years} years`}</span>
-              <span>{formatCad(row.value)}</span>
-            </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-cream/10" aria-hidden="true">
-              <div
-                className="h-2 rounded-full bg-aurora"
-                style={{ width: `${tallest > 0 ? (row.value / tallest) * 100 : 0}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
+  );
+}
+
+function MixChart({ rows, outlook, hasPast }: { rows: ChartRow[]; outlook: PortfolioOutlook; hasPast: boolean }) {
+  return (
+    <>
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={rows}>
+            <CartesianGrid stroke="rgba(244,240,230,0.06)" />
+            <XAxis
+              dataKey="t"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={(value) => String(new Date(Number(value)).getUTCFullYear())}
+              tick={{ fill: "#a9b7ae", fontSize: 11 }}
+              minTickGap={28}
+            />
+            <YAxis
+              tick={{ fill: "#a9b7ae", fontSize: 11 }}
+              width={72}
+              tickFormatter={(value) => formatCompactCad(Number(value))}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                const row = payload?.[0]?.payload as ChartRow | undefined;
+                if (!active || !row) return null;
+                return (
+                  <div className="rounded-xl px-3 py-2 text-sm text-cream" style={{ background: "#102019" }}>
+                    <p className="text-mist">{row.label}</p>
+                    {row.actual != null ? <p>Past value {formatCad(row.actual)}</p> : null}
+                    {row.mid != null && row.actual == null ? (
+                      <>
+                        <p>Low {formatCad(row.low ?? 0)}</p>
+                        <p>Middle {formatCad(row.mid)}</p>
+                        <p>High {formatCad(row.high ?? 0)}</p>
+                      </>
+                    ) : null}
+                  </div>
+                );
+              }}
+            />
+            <Area dataKey="p10" stackId="band" stroke="none" fill="transparent" connectNulls={false} />
+            <Area dataKey="span" stackId="band" stroke="none" fill="#f0c96a" fillOpacity={0.22} connectNulls={false} />
+            <Line dataKey="mid" stroke="#f0c96a" strokeDasharray="6 4" dot={false} strokeWidth={2} connectNulls={false} />
+            <Line dataKey="actual" stroke="#f4f0e6" dot={false} strokeWidth={2.5} connectNulls={false} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="mt-3 flex flex-wrap gap-4 text-xs text-mist">
+        {hasPast ? (
+          <li className="flex items-center gap-2">
+            <span className="inline-block h-0.5 w-6 bg-cream" />
+            Past value
+          </li>
+        ) : (
+          <li>No past line yet. Every holding needs a price history.</li>
+        )}
+        <li className="flex items-center gap-2">
+          <span className="inline-block h-3 w-6 rounded-sm bg-gold/30" />
+          What-if range
+        </li>
+      </ul>
+      {outlook.assumedRate ? (
+        <p className="mt-3 text-sm leading-6 text-mist">
+          There is not a full year of prices for this mix, so the what-if uses 6% a year.
+        </p>
+      ) : null}
+      <p className="mt-2 text-sm leading-6 text-mist">If the past year repeated. A range, not a promise.</p>
+    </>
+  );
+}
+
+function HoldingRow({
+  holding,
+  name,
+  price,
+  onShares,
+  onRemove,
+}: {
+  holding: Holding;
+  name: string;
+  price: number | null;
+  onShares: (shares: number) => void;
+  onRemove: () => void;
+}) {
+  const value = typeof holding.shares === "number" && price != null && price > 0 ? holding.shares * price : null;
+  return (
+    <li className="grid items-center gap-3 rounded-2xl border border-cream/10 p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+      <div className="min-w-0">
+        <Link href={`/stock/${encodeURIComponent(holding.symbol)}`} className="font-medium hover:underline">
+          {holding.symbol}
+        </Link>
+        <p className="truncate text-sm text-mist">{name}</p>
+      </div>
+      {typeof holding.shares === "number" ? (
+        <ShareCount shares={holding.shares} onCommit={onShares} />
+      ) : (
+        <p className="max-w-48 text-xs leading-5 text-mist">
+          {typeof holding.dollars === "number" ? `${formatCad(holding.dollars)} saved earlier.` : "Waiting for a price."} Share count
+          appears once a price loads.
+        </p>
+      )}
+      <p className="text-xs text-mist">
+        Value
+        <span className="mt-1 block text-base text-cream">{value == null ? "—" : formatCad(value)}</span>
+      </p>
+      <Button variant="quiet" onClick={onRemove}>
+        Remove
+      </Button>
+    </li>
+  );
+}
+
+function ShareCount({ shares, onCommit }: { shares: number; onCommit: (shares: number) => void }) {
+  const [text, setText] = useState(() => String(shares));
+  useEffect(() => {
+    setText(String(shares));
+  }, [shares]);
+
+  function commit() {
+    const next = Number(text);
+    if (!Number.isFinite(next)) {
+      setText(String(shares));
+      return;
+    }
+    onCommit(next);
+  }
+
+  return (
+    <label className="text-xs text-mist">
+      Shares
+      <input
+        className="mt-1 w-28 rounded-xl border border-cream/15 bg-pine px-2 py-1 text-cream"
+        type="number"
+        min={0.01}
+        max={1000000}
+        step="any"
+        inputMode="decimal"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+      />
+    </label>
   );
 }

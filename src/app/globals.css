@@ -49,6 +49,51 @@ body::before {
   outline-offset: 3px;
 }
 
+.page-arrive {
+  animation: page-arrive 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes page-arrive {
+  from {
+    opacity: 0.35;
+    clip-path: inset(0 0 86% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.page-veil {
+  animation: veil-in 0.2s ease-out 0.14s both;
+}
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-bone {
+  background-color: rgba(244, 240, 230, 0.06);
+  background-image: linear-gradient(180deg, transparent 0%, rgba(244, 240, 230, 0.16) 48%, transparent 100%);
+  background-size: 100% 220%;
+  background-repeat: no-repeat;
+  animation: bone-fall 1.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes bone-fall {
+  from {
+    background-position: 0 120%;
+  }
+  to {
+    background-position: 0 -30%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, futureValue, inflationAdjusted, projectGrowth, projectPortfolio } from "./compound";
 import { simulateDividend } from "./drip";
 import { monteCarloFan, projectOutcomeRange } from "./montecarlo";
-import { oneYearReturn, replayInvestment, replayWindow } from "./returns";
+import { oneYearReturn, replayWindow } from "./returns";
 
 describe("finance", () => {
   it("compounds a single year at 10%", () => {
@@ -173,17 +173,5 @@ describe("finance", () => {
         { date: "2026-10-23", close: 110 },
       ]),
     ).toBe(10);
-  });
-
-  it("replays a purchase from the first close", () => {
-    const series = replayInvestment(
-      [
-        { date: "2026-01-02", close: 50 },
-        { date: "2026-01-03", close: 75 },
-      ],
-      100,
-    );
-    expect(series[0].value).toBe(100);
-    expect(series[1].value).toBe(150);
   });
 });

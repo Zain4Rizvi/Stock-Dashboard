@@ -29,10 +29,7 @@ export function DividendLab({ universe }: { universe: ExplorerItem[] }) {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
       <header>
-        <h1 className="font-display text-5xl">Cash that shows up</h1>
-        <p className="mt-3 max-w-2xl leading-7 text-mist">
-          A dividend is a company sending you cash. Reinvesting buys more shares with that cash. The chart uses the current yield and then imagines a gentle 3% dividend raise and a 4% price rise. Imagination is labeled as such.
-        </p>
+        <h1 className="font-display text-5xl">Dividends</h1>
       </header>
       <Disclaimer prominent />
       <div className="flex flex-wrap gap-4">
@@ -59,16 +56,14 @@ export function DividendLab({ universe }: { universe: ExplorerItem[] }) {
           Reinvest the cash
         </label>
       </div>
-      {item && yieldPercent <= 0 ? (
-        <p className="max-w-2xl leading-7">
-          {item.name} is not showing a dividend. That is normal for a company pouring profit back into the business. Your result would come from the share price, not from a cheque.
-        </p>
-      ) : null}
+      {item && yieldPercent <= 0 ? <p>{item.name} has no dividend.</p> : null}
       {item && yieldPercent > 0 && rows.length > 0 ? (
         <section className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
           <p className="font-display text-3xl">Year {years} income about {formatCad(rows[rows.length - 1].income)}</p>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-mist">
-            Today's yield is {yieldPercent.toFixed(1)}%. The payout ratio is {item.payoutRatio == null ? "unknown" : `${item.payoutRatio.toFixed(0)}%`}. Over 100% means the dividend is bigger than the profit, which is a reason to be curious, not excited.
+          <p className="mt-2 text-sm text-mist">
+            {item.payoutRatio == null
+              ? "Payout unknown"
+              : `Yield ${yieldPercent.toFixed(1)}% · Payout ${item.payoutRatio.toFixed(0)}%`}
           </p>
           <div className="mt-4 h-72">
             <ResponsiveContainer width="100%" height="100%">
