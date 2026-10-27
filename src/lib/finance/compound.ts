@@ -33,6 +33,16 @@ export function futureValue(principal: number, annualRate: number, years: number
   return roundMoney(principal * (1 + annualRate) ** years);
 }
 
+/** Rates are decimals: 0.06 is a 6% pace. Names the inputs. It is not a balance. */
+export function assumptionSentence(input: { pace: number; wobble: number; inflation: number }): string {
+  const percent = (rate: number) => {
+    const amount = Math.round(rate * 100);
+    const article = amount === 8 || amount === 18 ? "an" : "a";
+    return `${article} ${amount}%`;
+  };
+  return `This band uses ${percent(input.pace)} pace, ${percent(input.wobble)} wobble, and ${percent(input.inflation)} inflation. Yearly contributions are modeled once a year.`;
+}
+
 /** The Future slider only sets 0% to 10% a year. */
 export const INFLATION_RATE_MIN = 0;
 export const INFLATION_RATE_MAX = 0.1;

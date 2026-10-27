@@ -53,6 +53,17 @@ export const GuideCardSchema = z.object({
   notAPrediction: z.literal(true),
 });
 
+export const SOURCE_NOTES = [
+  "demo snapshot",
+  "unofficial Yahoo close",
+  "Financial Modeling Prep snapshot",
+  "Twelve Data snapshot",
+  "Alpha Vantage snapshot",
+] as const;
+
+export const SourceNoteSchema = z.enum(SOURCE_NOTES);
+export type SourceNote = z.infer<typeof SourceNoteSchema>;
+
 export const CoachCardSchema = z.object({
   headline: z.string().min(1).max(140),
   answer: z.string().min(1).max(1200),
@@ -67,6 +78,8 @@ export const CoachCardSchema = z.object({
     )
     .max(3),
   followUp: z.string().max(200).nullable().optional(),
+  asOf: z.string().min(1).max(64).nullable(),
+  sourceNote: SourceNoteSchema.nullable(),
   notAPrediction: z.literal(true),
 });
 
@@ -113,13 +126,25 @@ export type AskBody = z.infer<typeof AskBodySchema>;
 const BANNED = [
   /will go up/i,
   /will go down/i,
+  /will it rise/i,
   /price target/i,
   /guaranteed return/i,
   /you should buy/i,
   /you should sell/i,
+  /should i buy/i,
+  /should i sell/i,
   /strong buy/i,
   /strong sell/i,
 ];
+
+/** True when the card repeated the date and source from the prompt. Null only when the prompt had no stock. */
+export function copiedGrounding(
+  card: { asOf: string | null; sourceNote: SourceNote | null },
+  expected: { asOf: string; sourceNote: SourceNote } | null,
+): boolean {
+  if (!expected) return card.asOf === null && card.sourceNote === null;
+  return card.asOf === expected.asOf && card.sourceNote === expected.sourceNote;
+}
 
 export function rejectsPrediction(text: string): boolean {
   return BANNED.some((pattern) => pattern.test(text));

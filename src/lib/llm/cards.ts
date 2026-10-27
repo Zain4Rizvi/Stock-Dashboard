@@ -1,6 +1,8 @@
 import type { PageBrief } from "./pages";
 import { CoachCardSchema, GuideCardSchema, type CoachCard, type GuideCard } from "./schemas";
 
+const ungrounded = { asOf: null, sourceNote: null };
+
 export function offlineGuide(page: Pick<PageBrief, "brief" | "tryThis">): GuideCard {
   return GuideCardSchema.parse({
     answer: page.brief,
@@ -24,6 +26,7 @@ export function offlineCoach(): CoachCard {
     fit: "Your three choices were not used for this reply. Nothing here is a match.",
     watchouts: ["Try again in a little while."],
     terms: [],
+    ...ungrounded,
     notAPrediction: true,
   });
 }
@@ -64,6 +67,7 @@ export function misconfiguredCoach(): CoachCard {
     fit: "Your three choices were not used. Nothing here is a match.",
     watchouts: ["This is a setup gap, not a limit on your questions."],
     terms: [],
+    ...ungrounded,
     notAPrediction: true,
   });
 }
@@ -75,6 +79,7 @@ export function unavailableCoach(): CoachCard {
     fit: "Your three choices were not used for this reply. Nothing here is a match.",
     watchouts: ["A busy or timed-out teacher is not a verdict on a company."],
     terms: [],
+    ...ungrounded,
     notAPrediction: true,
   });
 }
@@ -91,6 +96,7 @@ export function limitedCoach(scope: "hour" | "day", retryAt: string): CoachCard 
     fit: "Your three choices were not used for this reply. Nothing here is a match.",
     watchouts: ["This is a pause, not a verdict on a company."],
     terms: [],
+    ...ungrounded,
     notAPrediction: true,
   });
 }
@@ -102,6 +108,7 @@ export function refusedCoach(): CoachCard {
     fit: "Your three choices and practice portfolio stay on this device. They are not a reason to trade.",
     watchouts: ["A grade or a green year describes the past."],
     terms: [],
+    ...ungrounded,
     notAPrediction: true,
   });
 }

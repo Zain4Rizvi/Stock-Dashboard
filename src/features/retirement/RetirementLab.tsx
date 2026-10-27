@@ -1,7 +1,7 @@
 "use client";
 
 import { Disclaimer } from "@/components/ui/Disclaimer";
-import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, inflationAdjusted, projectGrowth } from "@/lib/finance/compound";
+import { INFLATION_RATE_MAX, INFLATION_RATE_MIN, assumptionSentence, inflationAdjusted, projectGrowth } from "@/lib/finance/compound";
 import { monteCarloFan, projectOutcomeRange } from "@/lib/finance/montecarlo";
 import { formatCad } from "@/lib/format";
 import { useMemo, useState } from "react";
@@ -132,6 +132,9 @@ export function RetirementLab() {
             <dd className="mt-1 font-display text-3xl">{formatCad(outcome.high)}</dd>
           </div>
         </dl>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-mist">
+          {assumptionSentence({ pace: choice.rate, wobble: choice.vol, inflation })}
+        </p>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-mist">{outcome.note}</p>
         <div className="mt-4 h-80">
           <ResponsiveContainer width="100%" height="100%">

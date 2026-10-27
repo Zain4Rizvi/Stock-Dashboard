@@ -1,8 +1,9 @@
 import { parseTsxSymbol } from "@/lib/data/symbols";
+import { oneYearReturn, replayWindow } from "@/lib/finance/returns";
 import type { Scorecard } from "@/lib/scoring/score";
-import type { NewsItem, Snapshot } from "@/types/market";
+import type { DataSource, Freshness, NewsItem, PricePoint, Quote, Snapshot } from "@/types/market";
 import type { PageBrief } from "./pages";
-import { DROP_OPTIONS, GOAL_OPTIONS, HORIZON_OPTIONS, type Profile } from "./schemas";
+import { DROP_OPTIONS, GOAL_OPTIONS, HORIZON_OPTIONS, SOURCE_NOTES, type Profile, type SourceNote } from "./schemas";
 
 export interface AskTurn {
   role: "user" | "assistant";
@@ -17,6 +18,59 @@ export interface CoachStock {
   isSynthetic: boolean;
   price: number;
   summary: string;
+  asOf: string;
+  source: DataSource;
+  demoSnapshot: boolean;
+  sourceNote: SourceNote;
+  priceChange: { start: string; end: string; percent: number } | null;
+}
+
+/** Price, date, source, and the one-year window. The history array stays out. */
+export function snapshotGrounding(snapshot: {
+  quote: Pick<Quote, "price" | "asOf">;
+  history: PricePoint[];
+  source: DataSource;
+  isSynthetic: boolean;
+  freshness: Freshness;
+  fallback?: boolean;
+}): Pick<CoachStock, "price" | "isSynthetic" | "asOf" | "source" | "demoSnapshot" | "sourceNote" | "priceChange"> {
+  const demoSnapshot =
+    snapshot.isSynthetic || snapshot.fallback === true || snapshot.freshness === "demo" || snapshot.source === "synthetic";
+  return {
+    price: snapshot.quote.price,
+    isSynthetic: snapshot.isSynthetic,
+    asOf: snapshot.quote.asOf,
+    source: snapshot.source,
+    demoSnapshot,
+    sourceNote: demoSnapshot ? "demo snapshot" : liveSourceNote(snapshot.source),
+    priceChange: priceChangeWindow(snapshot.history),
+  };
+}
+
+function liveSourceNote(source: DataSource): SourceNote {
+  switch (source) {
+    case "yahoo":
+      return "unofficial Yahoo close";
+    case "fmp":
+      return "Financial Modeling Prep snapshot";
+    case "twelvedata":
+      return "Twelve Data snapshot";
+    case "alphavantage":
+      return "Alpha Vantage snapshot";
+    case "synthetic":
+      return "demo snapshot";
+  }
+}
+
+function priceChangeWindow(history: PricePoint[]): { start: string; end: string; percent: number } | null {
+  const change = oneYearReturn(history);
+  const endDate = history[history.length - 1]?.date;
+  if (change == null || !endDate) return null;
+  const points = replayWindow(history, "1Y", endDate).points;
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (!start || !end) return null;
+  return { start: start.date, end: end.date, percent: Math.round(change * 10) / 10 };
 }
 
 const TICKER = /\b[A-Z0-9]+(?:[.-][A-Z0-9]+)*\.TO\b/;
@@ -81,6 +135,15 @@ export function coachPrompt(input: {
           .map((holding) => `${holding.symbol} ${sharePhrase(holding.shares)}`)
           .join(", ")}.`;
   const earlier = historyBlock(input.history);
+  const snapshotRules = input.stock
+    ? [
+        "Copy asOf and sourceNote into the JSON exactly as they appear in the stock snapshot.",
+        input.stock.demoSnapshot ? "The figures below are the demo snapshot, not a live quote. Say that in the answer." : "",
+        input.stock.priceChange
+          ? "priceChange is the close-to-close window. Do not invent a different start, end, or percent."
+          : "priceChange is null. Do not invent a start, end, or percent.",
+      ]
+    : ["There is no stock snapshot. asOf must be null and sourceNote must be null. Do not invent a date or a source."];
   return [
     "Answer an investing question for a 22-year-old who has never studied finance.",
     "Use only the choices, the practice portfolio, and the stock snapshot below.",
@@ -92,9 +155,11 @@ export function coachPrompt(input: {
     input.holdings.length === 0
       ? "fit must say the practice portfolio is empty. Do not invent companies."
       : "fit must mention the practice portfolio symbols below. Do not invent extra companies.",
-    "If isSynthetic is true, say the figures are a demo snapshot, not a live quote.",
+    ...snapshotRules,
+    `sourceNote must be null, or exactly one of: ${SOURCE_NOTES.join(" | ")}.`,
+    "Do not include a price history.",
     "If a ticker is not on the shelf, say that. Do not invent its numbers.",
-    "Return JSON with keys headline, answer, fit, watchouts (0-3 strings), terms (0-3 objects with word and plain), followUp, notAPrediction.",
+    "Return JSON with keys headline, answer, fit, watchouts (0-3 strings), terms (0-3 objects with word and plain), followUp, notAPrediction, asOf, sourceNote.",
     "notAPrediction must be the boolean true.",
     "followUp is one useful next question, or null.",
     "terms define jargon you actually used, in plain words.",
