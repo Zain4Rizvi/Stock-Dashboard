@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { QuoteSchema } from "@/lib/data/schemas";
-import { quoteClock } from "./yahoo";
+import { quoteClock, quoteEventDates } from "./yahoo";
 
 const FETCHED = new Date("2026-10-26T22:00:30.000Z");
 
@@ -38,5 +38,21 @@ describe("Yahoo quote clock", () => {
     const clock = quoteClock({}, FETCHED);
     expect(clock.asOf).toBe(FETCHED.toISOString());
     expect(clock.fetchedAt).toBeUndefined();
+  });
+});
+
+describe("Yahoo quote dates", () => {
+  it("maps an earnings date only when the quote includes one", () => {
+    expect(quoteEventDates({ earningsTimestamp: new Date("2026-11-04T21:00:00.000Z") })).toEqual({
+      earningsDate: "2026-11-04",
+    });
+    expect(quoteEventDates({})).toEqual({});
+    expect(quoteEventDates({ dividendDate: new Date("2026-11-01T00:00:00.000Z") })).toEqual({});
+  });
+
+  it("maps exDividendDate only when that field is on the quote", () => {
+    expect(quoteEventDates({ exDividendDate: new Date("2026-12-01T00:00:00.000Z") })).toEqual({
+      exDividendDate: "2026-12-01",
+    });
   });
 });

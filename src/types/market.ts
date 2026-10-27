@@ -33,6 +33,10 @@ export interface Quote {
   fetchedAt?: string;
   /** Yahoo exchangeDataDelayedBy, in minutes. Omitted when Yahoo does not send it. */
   delayMinutes?: number;
+  /** UTC day from Yahoo earningsTimestamp. Omitted when the fetched quote did not include it. */
+  earningsDate?: string;
+  /** UTC day from Yahoo exDividendDate. Omitted when the fetched quote did not include it. */
+  exDividendDate?: string;
 }
 
 export interface PricePoint {

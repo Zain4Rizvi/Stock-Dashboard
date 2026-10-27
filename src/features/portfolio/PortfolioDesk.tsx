@@ -4,9 +4,10 @@ import { DataBadge } from "@/components/ui/DataBadge";
 import { Button } from "@/components/ui/Button";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { PricePointSchema, QuoteSchema, StockSchema } from "@/lib/data/schemas";
+import { parseHoldingCsv, type HoldingCsvResult } from "@/lib/finance/csv";
 import { portfolioOutlook, portfolioValue, type PortfolioFanStep, type PortfolioOutlook } from "@/lib/finance/portfolio";
 import { formatCad, formatCompactCad, formatPercent } from "@/lib/format";
-import { type Holding, useDesk } from "@/lib/storage/desk";
+import { type Holding, type PracticeAccount, useDesk } from "@/lib/storage/desk";
 import type { DataSource, ExplorerItem, Freshness } from "@/types/market";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -175,6 +176,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
         <div>
           <h1 className="font-display text-5xl">Portfolio</h1>
           <p className="mt-3 max-w-2xl leading-7 text-mist">A practice mix of shares. Nothing is bought.</p>
+          <AccountLabel />
         </div>
         {badge ? (
           <DataBadge
@@ -253,6 +255,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
         ) : null}
         {matches.length > 8 ? <p className="mt-2 text-xs text-mist">Showing 8 matches. Type more to narrow them.</p> : null}
       </section>
+      <HoldingImport known={bySymbol} />
     </div>
   );
 }
@@ -352,6 +355,7 @@ function Summary({ outlook }: { outlook: PortfolioOutlook }) {
         ) : (
           <p className="mt-1 text-sm text-mist">Change over this chart is not available yet.</p>
         )}
+        <p className="mt-1 text-sm text-mist">Dividends and fees are not in it.</p>
       </div>
       <Horizon label="In 5 years" step={year5} />
       <Horizon label="In 10 years" step={year10} />
@@ -381,6 +385,9 @@ function MixChart({ rows, outlook, hasPast }: { rows: ChartRow[]; outlook: Portf
   const forecastRows = rows.filter((row) => row.mid != null);
   return (
     <div className="grid gap-6">
+      <p className="text-sm leading-6 text-mist">
+        This line is the share price times the share count. Dividends and fees are not in it.
+      </p>
       <div>
         {hasPast ? (
           <div className="h-80">
@@ -527,6 +534,141 @@ function HoldingRow({
         Remove
       </Button>
     </li>
+  );
+}
+
+const ACCOUNT_LABEL: Record<PracticeAccount, string> = {
+  tfsa: "TFSA",
+  rrsp: "RRSP",
+  fhsa: "FHSA",
+  other: "Other",
+};
+
+function AccountLabel() {
+  const accountType = useDesk((state) => state.accountType);
+  const setAccountType = useDesk((state) => state.setAccountType);
+  return (
+    <div className="mt-4 grid max-w-md gap-2">
+      <label className="block text-sm text-mist">
+        Practice account
+        <select
+          className="mt-1 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+          value={accountType ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+            setAccountType(value === "tfsa" || value === "rrsp" || value === "fhsa" || value === "other" ? value : null);
+          }}
+        >
+          <option value="">Not set</option>
+          <option value="tfsa">TFSA</option>
+          <option value="rrsp">RRSP</option>
+          <option value="fhsa">FHSA</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <p className="text-sm leading-6 text-mist">
+        {accountType ? `Labeled as ${ACCOUNT_LABEL[accountType]}.` : "No account label."} This does not change the numbers.{" "}
+        <Link href="/canada" className="text-gold hover:underline">
+          What these accounts mean
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function HoldingImport({ known }: { known: Map<string, ExplorerItem> }) {
+  const holdings = useDesk((state) => state.holdings);
+  const add = useDesk((state) => state.addHolding);
+  const setShares = useDesk((state) => state.setShares);
+  const shelf = useMemo(() => new Set(known.keys()), [known]);
+  const [text, setText] = useState("");
+  const [saved, setSaved] = useState(false);
+  const parsed: HoldingCsvResult | null = text.trim() ? parseHoldingCsv(text, shelf) : null;
+
+  function readFile(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSaved(false);
+      setText(typeof reader.result === "string" ? reader.result : "");
+    };
+    reader.readAsText(file);
+  }
+
+  function save() {
+    if (!parsed || parsed.error || parsed.rows.length === 0) return;
+    for (const row of parsed.rows) {
+      if (holdings.some((holding) => holding.symbol === row.symbol)) setShares(row.symbol, row.shares);
+      else add(row.symbol, row.shares);
+    }
+    setText("");
+    setSaved(true);
+  }
+
+  return (
+    <section className="grid gap-3">
+      <h2 className="text-sm text-mist">Bring in a spreadsheet</h2>
+      <p className="max-w-2xl text-sm leading-6 text-mist">
+        Paste rows or choose a file. The first row needs a symbol or ticker column, and a shares or quantity column. This stays in this browser. Nothing is uploaded.
+      </p>
+      <textarea
+        className="min-h-28 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+        aria-label="Symbol and shares rows"
+        placeholder={"symbol,shares\nRY.TO,2"}
+        value={text}
+        onChange={(event) => {
+          setSaved(false);
+          setText(event.target.value);
+        }}
+      />
+      <input
+        className="text-sm text-mist"
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        aria-label="Choose a symbol and shares file"
+        onChange={(event) => {
+          readFile(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+      {saved ? <p className="text-sm text-aurora">Saved on this browser.</p> : null}
+      {parsed ? <ImportPreview parsed={parsed} onSave={save} /> : null}
+    </section>
+  );
+}
+
+function ImportPreview({ parsed, onSave }: { parsed: HoldingCsvResult; onSave: () => void }) {
+  return (
+    <div className="grid gap-3 rounded-2xl border border-cream/10 p-3">
+      {parsed.error ? <p className="text-sm text-loss">{parsed.error}</p> : null}
+      {parsed.rows.length > 0 ? (
+        <ul className="grid gap-1 text-sm">
+          {parsed.rows.map((row) => (
+            <li key={row.symbol}>
+              {row.symbol} · {row.shares} shares
+            </li>
+          ))}
+        </ul>
+      ) : parsed.error ? null : (
+        <p className="text-sm text-mist">No share counts to save.</p>
+      )}
+      {parsed.unknown.length > 0 ? (
+        <p className="text-sm leading-6 text-mist">Left out, not on this shelf: {parsed.unknown.join(", ")}</p>
+      ) : null}
+      {parsed.skipped.length > 0 ? (
+        <div className="text-sm text-mist">
+          <p>Could not read:</p>
+          <ul className="mt-1 grid gap-1">
+            {parsed.skipped.map((line, index) => (
+              <li key={`${index}-${line}`}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <Button variant="ghost" disabled={parsed.error != null || parsed.rows.length === 0} onClick={onSave}>
+        Save on this browser
+      </Button>
+    </div>
   );
 }
 

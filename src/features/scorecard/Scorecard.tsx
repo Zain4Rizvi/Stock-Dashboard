@@ -5,7 +5,7 @@ import { GLOSSARY } from "@/lib/scoring/glossary";
 import type { Scorecard as ScorecardModel } from "@/lib/scoring/score";
 import type { Snapshot } from "@/types/market";
 import Link from "next/link";
-import { AddToPortfolio } from "./AddToPortfolio";
+import { AddToPortfolio, WatchStar } from "./AddToPortfolio";
 import { ExplainPanel } from "./ExplainPanel";
 import { PriceChart } from "./PriceChart";
 import { MoodPanel } from "@/features/sentiment/MoodPanel";
@@ -40,6 +40,39 @@ function pastPriceChange(history: Snapshot["history"], value: number | null): st
   const end = points[points.length - 1]?.date;
   if (!start || !end) return null;
   return `${formatPercent(value, 1, true)} price change ${start} to ${end}. Not a total return and not the TSX composite.`;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+function formatSnapshotDay(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) return iso;
+  const month = MONTHS[Number(match[2]) - 1];
+  if (!month) return iso;
+  return `${month} ${Number(match[3])}, ${match[1]}`;
+}
+
+function SnapshotDates({ quote }: { quote: Snapshot["quote"] }) {
+  const rows: { label: string; day: string }[] = [];
+  if (quote.exDividendDate) rows.push({ label: "Ex-dividend", day: quote.exDividendDate });
+  if (quote.earningsDate) rows.push({ label: "Earnings", day: quote.earningsDate });
+  return (
+    <section className="rounded-3xl border border-cream/10 bg-pine/70 p-5">
+      <h2 className="font-display text-3xl">Dates</h2>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-mist">Dates are not in this snapshot.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {rows.map((row) => (
+            <li key={row.label} className="flex items-baseline justify-between gap-3">
+              <span>{row.label}</span>
+              <span className="text-mist">{formatSnapshotDay(row.day)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 function GradeBadge({ grade }: { grade: string }) {
@@ -95,6 +128,7 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <AddToPortfolio symbol={snapshot.stock.symbol} />
+            <WatchStar symbol={snapshot.stock.symbol} />
             <Link href={`/compare?symbols=${snapshot.stock.symbol}`} className="rounded-full px-4 py-2 text-sm text-mist hover:text-cream">
               Compare
             </Link>
@@ -103,6 +137,8 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
       </header>
 
       <PriceChart history={snapshot.history} />
+
+      <SnapshotDates quote={snapshot.quote} />
 
       <section className="flex items-start gap-4 rounded-3xl border border-cream/10 bg-ink/40 p-5">
         <GradeBadge grade={score.overall} />
