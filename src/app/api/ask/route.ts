@@ -15,8 +15,8 @@ import {
   unavailableGuide,
 } from "@/lib/llm/cards";
 import { pageBrief } from "@/lib/llm/pages";
-import { coachPrompt, guidePrompt, mentionedTicker, type AskTurn, type CoachStock } from "@/lib/llm/prompts";
-import { AskBodySchema, CoachCardSchema, GuideCardSchema, rejectsPrediction, resolveAskSource, type AskSource, type CoachCard, type GuideCard } from "@/lib/llm/schemas";
+import { coachPrompt, guidePrompt, mentionedTicker, snapshotGrounding, type AskTurn, type CoachStock } from "@/lib/llm/prompts";
+import { AskBodySchema, CoachCardSchema, copiedGrounding, GuideCardSchema, rejectsPrediction, resolveAskSource, type AskSource, type CoachCard, type GuideCard } from "@/lib/llm/schemas";
 import { scoreStock } from "@/lib/scoring/score";
 import { connection } from "next/server";
 import type { ZodType } from "zod";
@@ -59,9 +59,8 @@ async function stockContext(message: string): Promise<{ stock: CoachStock | null
         name: snapshot.stock.name,
         sector: snapshot.stock.sector,
         blurb: snapshot.stock.blurb,
-        isSynthetic: snapshot.isSynthetic,
-        price: snapshot.quote.price,
         summary: score.summary,
+        ...snapshotGrounding(snapshot),
       },
     };
   } catch {
@@ -145,6 +144,13 @@ export async function POST(request: Request) {
   const body = parsed.data;
   const history: AskTurn[] = body.history ?? [];
 
+  if (rejectsPrediction(body.message)) {
+    if (body.mode === "guide") {
+      return Response.json({ mode: "guide", source: "refused", card: refusedGuide() });
+    }
+    return Response.json({ mode: "coach", source: "refused", card: refusedCoach() });
+  }
+
   if (body.mode === "guide") {
     const page = pageBrief(body.pageId);
     const result = await askModel(request, guidePrompt(page, body.message, history), GuideCardSchema);
@@ -165,5 +171,11 @@ export async function POST(request: Request) {
     }),
     CoachCardSchema,
   );
+  if (
+    result.source === "groq" &&
+    !copiedGrounding(result.card, stock ? { asOf: stock.asOf, sourceNote: stock.sourceNote } : null)
+  ) {
+    return Response.json({ mode: "coach", source: "unavailable", card: unavailableCoach() });
+  }
   return Response.json({ mode: "coach", source: result.source, card: coachCard(result) });
 }

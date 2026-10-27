@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { assumptionSentence } from "../finance/compound";
 import { limitedCoach, misconfiguredCoach, offlineCoach, offlineGuide, refusedCoach, unavailableCoach } from "./cards";
 import { sourceLine } from "./client";
 import { PAGE_BRIEFS, pageBrief, pageIdFromPath } from "./pages";
-import { coachPrompt, guidePrompt, mentionedTicker } from "./prompts";
-import { CoachCardSchema, GuideCardSchema, rejectsPrediction, resolveAskSource } from "./schemas";
+import { coachPrompt, guidePrompt, mentionedTicker, snapshotGrounding } from "./prompts";
+import { CoachCardSchema, GuideCardSchema, copiedGrounding, rejectsPrediction, resolveAskSource } from "./schemas";
 
 describe("ask language", () => {
   it("keeps the guide on the page brief and the coach on plain profile words", () => {
@@ -59,6 +60,8 @@ describe("ask language", () => {
       watchouts: ["A high yield can mean the price already fell."],
       terms: [{ word: "Yield", plain: "The yearly cash divided by the price." }],
       followUp: "Do you want that cash spent, or used to hold more shares?",
+      asOf: null,
+      sourceNote: null,
       notAPrediction: true as const,
     };
     expect(CoachCardSchema.safeParse(card).success).toBe(true);
@@ -70,6 +73,23 @@ describe("ask language", () => {
     expect(mentionedTicker("What about ry.to and SHOP.TO?")).toBe("RY.TO");
     expect(mentionedTicker("Look at TECK-B.TO please")).toBe("TECK-B.TO");
     expect(mentionedTicker("no ticker here")).toBeNull();
+
+    expect(rejectsPrediction("should I buy RY.TO")).toBe(true);
+    expect(rejectsPrediction("Should I sell SHOP.TO?")).toBe(true);
+    expect(rejectsPrediction("will it rise")).toBe(true);
+    expect(rejectsPrediction("What does a dividend actually do?")).toBe(false);
+
+    const invented = {
+      ...card,
+      asOf: "2026-10-23T20:00:00.000Z",
+      sourceNote: "a blog I like",
+    };
+    expect(CoachCardSchema.safeParse(invented).success).toBe(false);
+    const grounded = { ...card, asOf: null, sourceNote: null };
+    expect(CoachCardSchema.safeParse(grounded).success).toBe(true);
+    expect(
+      CoachCardSchema.safeParse({ ...grounded, asOf: "2026-10-23T20:00:00.000Z", sourceNote: "demo snapshot" }).success,
+    ).toBe(true);
   });
 });
 
@@ -96,5 +116,86 @@ describe("ask outcomes", () => {
     expect(sourceLine("misconfigured")).toMatch(/not set up/i);
     expect(sourceLine("limited")).not.toMatch(/offline/i);
     expect(sourceLine("groq")).toMatch(/AI/);
+  });
+});
+
+describe("ask grounding", () => {
+  const history = [
+    { date: "2020-01-02", close: 1.234 },
+    { date: "2025-10-24", close: 100 },
+    { date: "2026-10-23", close: 110 },
+  ];
+
+  it("names the demo snapshot date, source, and price-change window without the history", () => {
+    const grounding = snapshotGrounding({
+      quote: { price: 190.5, asOf: "2026-10-23T20:00:00.000Z" },
+      history,
+      source: "yahoo",
+      isSynthetic: false,
+      freshness: "demo",
+      fallback: true,
+    });
+    expect(grounding.demoSnapshot).toBe(true);
+    expect(grounding.sourceNote).toBe("demo snapshot");
+    expect(grounding.asOf).toBe("2026-10-23T20:00:00.000Z");
+    expect(grounding.source).toBe("yahoo");
+    expect(grounding.price).toBe(190.5);
+    expect(grounding.priceChange).toEqual({ start: "2025-10-24", end: "2026-10-23", percent: 10 });
+    expect(JSON.stringify(grounding)).not.toContain("1.234");
+
+    const prompt = coachPrompt({
+      message: "What is RY.TO?",
+      history: [],
+      profile: null,
+      holdings: [],
+      stock: {
+        symbol: "RY.TO",
+        name: "Royal Bank",
+        sector: "Financials",
+        blurb: "A bank.",
+        summary: "A large bank.",
+        ...grounding,
+      },
+      unknownTicker: null,
+    });
+    expect(prompt).toContain("The figures below are the demo snapshot");
+    expect(prompt).toContain("2026-10-23T20:00:00.000Z");
+    expect(prompt).toContain("demo snapshot");
+    expect(prompt).toContain("unofficial Yahoo close");
+    expect(prompt).toContain("2025-10-24");
+    expect(prompt).toContain("2026-10-23");
+    expect(prompt).toContain("yahoo");
+    expect(prompt).not.toContain("1.234");
+  });
+
+  it("keeps a live Yahoo close on the allowlist and drops a missing window", () => {
+    const grounding = snapshotGrounding({
+      quote: { price: 10, asOf: "2026-10-23T20:00:00.000Z" },
+      history: [{ date: "2026-10-23", close: 10 }],
+      source: "yahoo",
+      isSynthetic: false,
+      freshness: "snapshot",
+    });
+    expect(grounding.demoSnapshot).toBe(false);
+    expect(grounding.sourceNote).toBe("unofficial Yahoo close");
+    expect(grounding.priceChange).toBeNull();
+    expect(copiedGrounding({ asOf: grounding.asOf, sourceNote: "demo snapshot" }, { asOf: grounding.asOf, sourceNote: grounding.sourceNote })).toBe(false);
+    expect(copiedGrounding({ asOf: grounding.asOf, sourceNote: grounding.sourceNote }, { asOf: grounding.asOf, sourceNote: grounding.sourceNote })).toBe(true);
+    expect(copiedGrounding({ asOf: null, sourceNote: null }, null)).toBe(true);
+  });
+});
+
+describe("projection assumptions", () => {
+  it("names the pace, the wobble, inflation, and yearly contributions", () => {
+    const sentence = assumptionSentence({ pace: 0.06, wobble: 0.12, inflation: 0.02 });
+    expect(sentence).toContain("6% pace");
+    expect(sentence).toContain("12% wobble");
+    expect(sentence).toContain("2% inflation");
+    expect(sentence).toMatch(/yearly contributions/i);
+    expect(sentence).toMatch(/once a year/i);
+    expect(sentence.toLowerCase()).not.toContain("you will have");
+    expect(sentence).not.toMatch(/\.TO\b/);
+    expect(assumptionSentence({ pace: 0.08, wobble: 0.18, inflation: 0.03 })).toContain("an 8% pace");
+    expect(assumptionSentence({ pace: 0.08, wobble: 0.18, inflation: 0.03 })).toContain("an 18% wobble");
   });
 });

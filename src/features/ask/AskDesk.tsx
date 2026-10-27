@@ -152,6 +152,7 @@ export function AskDesk() {
               turn.card ? (
                 <article key={turn.id} className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
                   <p className="text-xs tracking-wide text-gold uppercase">{sourceLine(turn.source ?? "offline")}</p>
+                  <SnapshotLine card={turn.card} />
                   <h2 className="mt-2 font-display text-2xl">{turn.card.headline}</h2>
                   <p className="mt-2 leading-7">{turn.card.answer}</p>
                   <p className="mt-3 text-sm leading-6 text-mist">{turn.card.fit}</p>
@@ -241,6 +242,12 @@ export function AskDesk() {
       </form>
     </div>
   );
+}
+
+function SnapshotLine({ card }: { card: { sourceNote?: string | null; asOf?: string | null } }) {
+  const line = [card.sourceNote, card.asOf ? `as of ${card.asOf}` : null].filter(Boolean).join(" · ");
+  if (!line) return null;
+  return <p className="mt-1 text-sm leading-6 text-mist">{line}</p>;
 }
 
 function questionBefore(messages: { id: string; role: string; text: string }[], id: string): string | null {
