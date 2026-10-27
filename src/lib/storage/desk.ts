@@ -35,6 +35,8 @@ interface DeskState {
   bestQuiz: number;
   watchlist: string[];
   accountType: PracticeAccount | null;
+  /** Indexes into the quiz question list from the last finished attempt. */
+  missedQuiz: number[];
   addHolding: (symbol: string, shares?: number) => void;
   removeHolding: (symbol: string) => void;
   setShares: (symbol: string, shares: number) => void;
@@ -42,9 +44,22 @@ interface DeskState {
   setBestQuiz: (score: number) => void;
   toggleWatch: (symbol: string) => void;
   setAccountType: (accountType: PracticeAccount | null) => void;
+  setMissedQuiz: (indexes: number[]) => void;
 }
 
-type PersistedDesk = Pick<DeskState, "holdings" | "galaxyMode" | "bestQuiz" | "watchlist" | "accountType">;
+type PersistedDesk = Pick<DeskState, "holdings" | "galaxyMode" | "bestQuiz" | "watchlist" | "accountType" | "missedQuiz">;
+
+function sanitizeMissedQuiz(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<number>();
+  const indexes: number[] = [];
+  for (const value of raw) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 99 || seen.has(value)) continue;
+    seen.add(value);
+    indexes.push(value);
+  }
+  return indexes;
+}
 
 function sanitizeWatchlist(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -85,6 +100,7 @@ export const useDesk = create<DeskState>()(
       bestQuiz: 0,
       watchlist: [],
       accountType: null,
+      missedQuiz: [],
       addHolding: (symbol, shares = 1) => {
         if (get().holdings.some((holding) => holding.symbol === symbol)) return;
         if (!Number.isFinite(shares)) return;
@@ -113,6 +129,7 @@ export const useDesk = create<DeskState>()(
         set({ watchlist: addWatch(current, parsed) });
       },
       setAccountType: (accountType) => set({ accountType: sanitizeAccount(accountType) }),
+      setMissedQuiz: (indexes) => set({ missedQuiz: sanitizeMissedQuiz(indexes) }),
     }),
     {
       name: "maple-market-desk",
@@ -125,6 +142,7 @@ export const useDesk = create<DeskState>()(
                 holdings?: unknown;
                 galaxyMode?: unknown;
                 bestQuiz?: unknown;
+                missedQuiz?: unknown;
                 watchlist?: unknown;
                 accountType?: unknown;
               })
@@ -144,6 +162,7 @@ export const useDesk = create<DeskState>()(
           bestQuiz,
           watchlist: sanitizeWatchlist(state.watchlist),
           accountType: sanitizeAccount(state.accountType),
+          missedQuiz: sanitizeMissedQuiz(state.missedQuiz),
         };
       },
       storage: createJSONStorage(() => ({

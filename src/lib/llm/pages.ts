@@ -30,7 +30,7 @@ export const PAGE_BRIEFS = {
     tryThis: "Pick two companies and read one row of the table.",
   },
   portfolio: {
-    title: "Portfolio",
+    title: "Practice",
     brief:
       "A practice portfolio of share counts. Nothing is bought. Search or add a company, then set how many shares. The chart is the past value of that mix: each past price times the shares you hold, added together. The numbers on top are today's value and how that value changed over the chart. The band after today is a what-if: if the past year repeated, with a high and low range. It is not a promise. If there is not a full year of prices, the what-if uses 6% and says so.",
     tryThis: "Add a company and change the share count.",
@@ -50,7 +50,7 @@ export const PAGE_BRIEFS = {
   quiz: {
     title: "Quiz",
     brief:
-      "Short multiple-choice questions about shares, dividends, P/E, past returns, owning more than one company, yield, and market cap. After you pick, the page explains that answer. At the end you see a score. The best score on this browser is saved. The quiz does not choose a stock for you.",
+      "Short multiple-choice questions about shares, dividends, P/E, past returns, owning more than one company, yield, and market cap. After you pick, the page explains that answer. At the end you see a score and the questions you missed. The best score and those missed questions are saved on this browser. The quiz does not choose a stock for you.",
     tryThis: "Answer one question and read the explanation before the next.",
   },
   stock: {
@@ -64,6 +64,12 @@ export const PAGE_BRIEFS = {
     brief:
       "Plain notes on TFSA, RRSP, and FHSA accounts, the dividend tax credit, and US dividend withholding. The sector mix is the share of market cap on this shelf, not the S&P/TSX weight. A few Canadian funds appear after the weekday evening update saves a price. Rules change. This is not advice, and it does not pick an account.",
     tryThis: "Read one account, then see whether a fund has a price yet.",
+  },
+  start: {
+    title: "Start",
+    brief:
+      "A first path in three steps: what a share is, how one company differs from a broad fund, and a practice portfolio where nothing is bought. A monthly amount starts at 500 dollars and can be changed. The bars only add up money set aside. They are not a return. Links from this page open Compare, Dividends, Years from now, the quiz, and Canada.",
+    tryThis: "Change the monthly amount, then open the practice portfolio.",
   },
   ask: {
     title: "Ask",

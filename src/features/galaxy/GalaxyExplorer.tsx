@@ -2,6 +2,7 @@
 
 import { UniverseBadge } from "@/components/ui/DataBadge";
 import { formatCad, formatPercent } from "@/lib/format";
+import { sectorLabel, sectorPlain } from "@/lib/scoring/glossary";
 import { useDesk } from "@/lib/storage/desk";
 import type { ExplorerItem } from "@/types/market";
 import dynamic from "next/dynamic";
@@ -174,16 +175,20 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
 
   const chips = (
     <div className="flex flex-wrap gap-2">
-      {["All", ...sectors].map((name) => (
-        <button
-          key={name}
-          type="button"
-          onClick={() => setSector(name)}
-          className={`rounded-full px-3 py-1.5 text-sm whitespace-nowrap ${sector === name ? "bg-cream text-ink" : "bg-ink/70 text-cream"}`}
-        >
-          {name}
-        </button>
-      ))}
+      {["All", ...sectors].map((id) => {
+        const tip = sectorPlain(id);
+        return (
+          <button
+            key={id}
+            type="button"
+            title={tip}
+            onClick={() => setSector(id)}
+            className={`rounded-full px-3 py-1.5 text-sm whitespace-nowrap ${sector === id ? "bg-cream text-ink" : "bg-ink/70 text-cream"}`}
+          >
+            {sectorLabel(id)}
+          </button>
+        );
+      })}
     </div>
   );
 

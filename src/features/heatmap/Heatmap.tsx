@@ -1,7 +1,7 @@
 "use client";
 
 import { returnToColor } from "@/features/galaxy/layout";
-import { formatPercent } from "@/lib/format";
+import { displayName, formatPercent } from "@/lib/format";
 import type { ExplorerItem } from "@/types/market";
 import { hierarchy, treemap } from "d3";
 import { useEffect, useMemo, useState } from "react";
@@ -74,6 +74,7 @@ export function Heatmap({
           const w = x1 - x0;
           const h = y1 - y0;
           const active = item.symbol === selected;
+          const shown = displayName(item.name, item.symbol);
           const label = priceChangeLabel(item);
           const lines =
             label == null
@@ -117,8 +118,13 @@ export function Heatmap({
               <g clipPath={`url(#${clipId})`}>
                 <title>{accessible}</title>
                 {w > 48 && h > 28 ? (
-                  <text x={8} y={16} fill="#07110d" fontSize={13} fontWeight={650}>
-                    {item.symbol.replace(".TO", "")}
+                  <text x={8} y={16} fill="#07110d" fontSize={12} fontWeight={650}>
+                    {shown.name}
+                    {w > 96 ? (
+                      <tspan fontSize={9} fontWeight={450} dx={4}>
+                        {shown.ticker}
+                      </tspan>
+                    ) : null}
                   </text>
                 ) : null}
                 {lines?.map((line, index) => (

@@ -1,7 +1,7 @@
 import { DataBadge } from "@/components/ui/DataBadge";
 import { replayWindow } from "@/lib/finance/returns";
 import { formatCad, formatCompactCad, formatNumber, formatPercent } from "@/lib/format";
-import { GLOSSARY } from "@/lib/scoring/glossary";
+import { GLOSSARY, sectorLabel, sectorPlain } from "@/lib/scoring/glossary";
 import type { Scorecard as ScorecardModel } from "@/lib/scoring/score";
 import type { Snapshot } from "@/types/market";
 import Link from "next/link";
@@ -99,7 +99,9 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
           >
             Back to stocks
           </Link>
-          <p className="mt-3 text-sm text-mist">{snapshot.stock.sector}</p>
+          <p className="mt-3 text-sm text-mist" title={sectorPlain(snapshot.stock.sector)}>
+            {sectorLabel(snapshot.stock.sector)}
+          </p>
           <h1 className="font-display text-5xl leading-none">{snapshot.stock.name}</h1>
           <p className="mt-2 text-lg text-gold">{snapshot.stock.symbol}</p>
           <p className="mt-4 max-w-2xl text-lg leading-8">{snapshot.stock.blurb}</p>

@@ -36,3 +36,31 @@ export const GLOSSARY = [
     plain: "How the share price changed over the past year. It already happened. It is not a prediction.",
   },
 ] as const;
+
+/** Visible sector words. The shelf still stores the short id (`Shops`, `Tech`, …) used for scores. */
+const SECTOR_COPY: Record<string, { label: string; plain: string }> = {
+  Shops: {
+    label: "Stores",
+    plain: "Companies that sell goods or meals to people.",
+  },
+  Investing: {
+    label: "Asset managers",
+    plain: "Companies that invest money or own pieces of other businesses.",
+  },
+  Industry: {
+    label: "Industrial companies",
+    plain: "Companies that build, move goods, or make equipment.",
+  },
+  Tech: {
+    label: "Technology",
+    plain: "Companies built around software or technology products.",
+  },
+};
+
+export function sectorLabel(sector: string): string {
+  return SECTOR_COPY[sector]?.label ?? sector;
+}
+
+export function sectorPlain(sector: string): string | undefined {
+  return SECTOR_COPY[sector]?.plain;
+}
