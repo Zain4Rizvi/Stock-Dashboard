@@ -231,6 +231,7 @@ function toExplorer(
     payoutRatio: fundamentals.payoutRatio,
     ...priceChangeWindow(history),
     asOf: quote.asOf,
+    ...(quote.exDividendDate ? { exDividendDate: quote.exDividendDate } : {}),
     ...(quote.fetchedAt ? { fetchedAt: quote.fetchedAt } : {}),
     isSynthetic,
     source,

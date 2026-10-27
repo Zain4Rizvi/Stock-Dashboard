@@ -96,6 +96,22 @@ describe("finance", () => {
     expect(drip[1].cash).toBe(0);
   });
 
+  it("at 0% growth, one year of income is the yield times principal", () => {
+    const principal = 800;
+    const yieldPercent = 2.5;
+    const rows = simulateDividend({
+      principal,
+      yieldPercent,
+      dividendGrowthPercent: 0,
+      priceGrowthPercent: 0,
+      years: 2,
+      reinvest: false,
+    });
+    const income = principal * (yieldPercent / 100);
+    expect(rows[0]?.income).toBe(income);
+    expect(rows[1]?.income).toBe(income);
+  });
+
   it("projects an empty portfolio as nothing", () => {
     expect(projectPortfolio([], 0.06, 1)).toBeNull();
   });
