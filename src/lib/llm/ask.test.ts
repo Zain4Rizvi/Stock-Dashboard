@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { offlineGuide, refusedCoach } from "./cards";
+import { limitedCoach, misconfiguredCoach, offlineCoach, offlineGuide, refusedCoach, unavailableCoach } from "./cards";
+import { sourceLine } from "./client";
 import { PAGE_BRIEFS, pageBrief, pageIdFromPath } from "./pages";
 import { coachPrompt, guidePrompt, mentionedTicker } from "./prompts";
-import { CoachCardSchema, GuideCardSchema, rejectsPrediction } from "./schemas";
+import { CoachCardSchema, GuideCardSchema, rejectsPrediction, resolveAskSource } from "./schemas";
 
 describe("ask language", () => {
   it("keeps the guide on the page brief and the coach on plain profile words", () => {
@@ -69,5 +70,31 @@ describe("ask language", () => {
     expect(mentionedTicker("What about ry.to and SHOP.TO?")).toBe("RY.TO");
     expect(mentionedTicker("Look at TECK-B.TO please")).toBe("TECK-B.TO");
     expect(mentionedTicker("no ticker here")).toBeNull();
+  });
+});
+
+describe("ask outcomes", () => {
+  it("maps a missing teacher to misconfigured and a thrown call to unavailable", () => {
+    expect(resolveAskSource({ provider: null, overCap: false, failed: false, refused: false })).toBe("misconfigured");
+    expect(resolveAskSource({ provider: null, overCap: true, failed: true, refused: true })).toBe("misconfigured");
+    expect(resolveAskSource({ provider: {}, overCap: false, failed: true, refused: false })).toBe("unavailable");
+    expect(resolveAskSource({ provider: {}, overCap: true, failed: true, refused: false })).toBe("limited");
+    expect(resolveAskSource({ provider: {}, overCap: false, failed: false, refused: true })).toBe("refused");
+    expect(resolveAskSource({ provider: {}, overCap: false, failed: false, refused: false })).toBe("groq");
+
+    const missing = misconfiguredCoach();
+    expect(missing.headline).toMatch(/not set up/i);
+    expect(JSON.stringify(missing)).not.toMatch(/groq|api[_-]?key|secret|bearer/i);
+    expect(unavailableCoach().answer).toMatch(/try the same question again/i);
+    const hour = limitedCoach("hour", "21:00 UTC on 2026-10-26");
+    const day = limitedCoach("day", "00:00 UTC on 2026-10-27");
+    expect(hour.headline).not.toBe(offlineCoach().headline);
+    expect(hour.answer).toContain("21:00 UTC on 2026-10-26");
+    expect(hour.answer).not.toMatch(/offline/i);
+    expect(day.answer).toContain("00:00 UTC on 2026-10-27");
+    expect(sourceLine("unavailable")).not.toContain("No model was called");
+    expect(sourceLine("misconfigured")).toMatch(/not set up/i);
+    expect(sourceLine("limited")).not.toMatch(/offline/i);
+    expect(sourceLine("groq")).toMatch(/AI/);
   });
 });

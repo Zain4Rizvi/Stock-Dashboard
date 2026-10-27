@@ -6,7 +6,7 @@ import {
 } from "@/lib/llm/schemas";
 import { z } from "zod";
 
-const SourceSchema = z.enum(["groq", "offline", "refused"]);
+const SourceSchema = z.enum(["groq", "offline", "refused", "misconfigured", "unavailable", "limited"]);
 
 const GuideReplySchema = z.object({
   mode: z.literal("guide"),
@@ -24,9 +24,20 @@ export type GuideReply = z.infer<typeof GuideReplySchema>;
 export type CoachReply = z.infer<typeof CoachReplySchema>;
 
 export function sourceLine(source: AskSource): string {
-  if (source === "groq") return "Drafted with AI. It can be wrong.";
-  if (source === "refused") return "That answer would have been a trade or a price call. It was not shown.";
-  return "No model was called.";
+  switch (source) {
+    case "groq":
+      return "Drafted with AI. It can be wrong.";
+    case "refused":
+      return "That answer would have been a trade or a price call. It was not shown.";
+    case "misconfigured":
+      return "The teacher is not set up.";
+    case "unavailable":
+      return "The teacher could not answer. Try again.";
+    case "limited":
+      return "Too many questions right now.";
+    case "offline":
+      return "No model was called.";
+  }
 }
 
 export function recentHistory(turns: { role: "user" | "assistant"; text: string }[]): AskBody["history"] {

@@ -54,7 +54,7 @@ export function AskDesk() {
     if (next.goal && next.horizon && next.drop) setProfile({ goal: next.goal, horizon: next.horizon, drop: next.drop });
   }
 
-  async function send(text: string) {
+  async function send(text: string, again = false) {
     const message = text.trim();
     if (!message || loading) return;
     const prior = useCoach.getState().messages;
@@ -66,8 +66,10 @@ export function AskDesk() {
     );
     setLoading(true);
     setError(null);
-    setDraft("");
-    push({ id: crypto.randomUUID(), role: "user", text: message });
+    if (!again) {
+      setDraft("");
+      push({ id: crypto.randomUUID(), role: "user", text: message });
+    }
     try {
       const result = await postAsk({
         mode: "coach",
@@ -174,6 +176,19 @@ export function AskDesk() {
                     </dl>
                   ) : null}
                   {turn.card.followUp?.trim() ? <p className="mt-3 text-sm leading-6">Next: {turn.card.followUp}</p> : null}
+                  {turn.source === "unavailable" ? (
+                    <Button
+                      variant="ghost"
+                      className="mt-3"
+                      disabled={loading}
+                      onClick={() => {
+                        const question = questionBefore(messages, turn.id);
+                        if (question) void send(question, true);
+                      }}
+                    >
+                      Try again
+                    </Button>
+                  ) : null}
                 </article>
               ) : (
                 <p key={turn.id} className="ml-auto w-fit max-w-[90%] rounded-2xl bg-cream/10 px-3 py-2 text-sm leading-6">
@@ -184,7 +199,21 @@ export function AskDesk() {
           </div>
         )}
         {loading ? <p className="mt-3 text-sm text-mist">Writing…</p> : null}
-        {error ? <p className="mt-3 text-sm text-loss">{error}</p> : null}
+        {error ? (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <p className="text-sm text-loss">{error}</p>
+            <Button
+              variant="ghost"
+              disabled={loading}
+              onClick={() => {
+                const question = [...messages].reverse().find((turn) => turn.role === "user")?.text;
+                if (question) void send(question, true);
+              }}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
       </div>
       <form
         className="mt-4 flex min-w-0 shrink-0 flex-wrap items-end gap-2"
@@ -212,6 +241,15 @@ export function AskDesk() {
       </form>
     </div>
   );
+}
+
+function questionBefore(messages: { id: string; role: string; text: string }[], id: string): string | null {
+  const index = messages.findIndex((turn) => turn.id === id);
+  for (let i = index - 1; i >= 0; i--) {
+    const turn = messages[i];
+    if (turn?.role === "user") return turn.text;
+  }
+  return null;
 }
 
 function Chips<T extends string>({

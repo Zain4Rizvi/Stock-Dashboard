@@ -18,6 +18,15 @@ interface Turn {
   source?: AskSource;
 }
 
+function questionBefore(turns: { id: string; role: string; text: string }[], id: string): string | null {
+  const index = turns.findIndex((turn) => turn.id === id);
+  for (let i = index - 1; i >= 0; i--) {
+    const turn = turns[i];
+    if (turn?.role === "user") return turn.text;
+  }
+  return null;
+}
+
 export function PageGuide() {
   const pathname = usePathname() ?? "/";
   const page = pageBrief(pageIdFromPath(pathname));
@@ -62,7 +71,7 @@ export function PageGuide() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  async function send(text: string) {
+  async function send(text: string, again = false) {
     const message = text.trim();
     if (!message || loading) return;
     const id = ++request.current;
@@ -70,8 +79,10 @@ export function PageGuide() {
     const history = recentHistory(turns.map((turn) => ({ role: turn.role, text: turn.text })));
     setLoading(true);
     setError(null);
-    setDraft("");
-    setTurns((current) => [...current, { id: crypto.randomUUID(), role: "user", text: message }]);
+    if (!again) {
+      setDraft("");
+      setTurns((current) => [...current, { id: crypto.randomUUID(), role: "user", text: message }]);
+    }
     try {
       const result = await postAsk({ mode: "guide", pageId: pageIdFromPath(sent), message, history });
       if (id !== request.current || pathRef.current !== sent) return;
@@ -140,11 +151,38 @@ export function PageGuide() {
                     <p className="text-xs tracking-wide text-gold uppercase">{sourceLine(turn.source ?? "offline")}</p>
                     <p className="mt-2 text-sm leading-6">{turn.card?.answer}</p>
                     {turn.card?.tryThis ? <p className="mt-2 text-sm text-aurora">Try this: {turn.card.tryThis}</p> : null}
+                    {turn.source === "unavailable" ? (
+                      <Button
+                        variant="ghost"
+                        className="mt-3"
+                        disabled={loading}
+                        onClick={() => {
+                          const question = questionBefore(turns, turn.id);
+                          if (question) void send(question, true);
+                        }}
+                      >
+                        Try again
+                      </Button>
+                    ) : null}
                   </article>
                 ),
               )}
               {loading ? <p className="text-sm text-mist">Writing…</p> : null}
-              {error ? <p className="text-sm text-loss">{error}</p> : null}
+              {error ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-sm text-loss">{error}</p>
+                  <Button
+                    variant="ghost"
+                    disabled={loading}
+                    onClick={() => {
+                      const question = [...turns].reverse().find((turn) => turn.role === "user")?.text;
+                      if (question) void send(question, true);
+                    }}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : null}
             </div>
             <div className="border-t border-cream/10 px-4 py-4">
               <p className="mb-3 text-sm">

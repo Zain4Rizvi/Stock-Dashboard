@@ -72,7 +72,16 @@ export const CoachCardSchema = z.object({
 
 export type GuideCard = z.infer<typeof GuideCardSchema>;
 export type CoachCard = z.infer<typeof CoachCardSchema>;
-export type AskSource = "groq" | "offline" | "refused";
+export type AskSource = "groq" | "offline" | "refused" | "misconfigured" | "unavailable" | "limited";
+
+/** Maps a missing teacher, a full cap, a failed call, or a blocked prediction onto the public source. */
+export function resolveAskSource(input: { provider: unknown; overCap: boolean; failed: boolean; refused: boolean }): AskSource {
+  if (!input.provider) return "misconfigured";
+  if (input.overCap) return "limited";
+  if (input.failed) return "unavailable";
+  if (input.refused) return "refused";
+  return "groq";
+}
 
 export const AskBodySchema = z.object({
   mode: z.enum(["guide", "coach"]),
