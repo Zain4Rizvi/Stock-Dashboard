@@ -3,7 +3,7 @@ import { TTL } from "@/lib/data/cache/types";
 import type { SeedProvider } from "@/lib/data/adapters/seed";
 import type { MarketDataProvider } from "@/lib/data/provider";
 import { RateLimiter } from "@/lib/data/ratelimit";
-import { oneYearReturn } from "@/lib/finance/returns";
+import { oneYearReturn, replayWindow } from "@/lib/finance/returns";
 import type {
   DataSource,
   ExplorerItem,
@@ -178,6 +178,22 @@ export function createGateway(deps: {
   };
 }
 
+/** Same closes `oneYearReturn` compares. A one-point series stays null, not zero. */
+function priceChangeWindow(history: PricePoint[]): {
+  oneYearReturn: number | null;
+  returnStart: string | null;
+  returnEnd: string | null;
+} {
+  const change = oneYearReturn(history);
+  const endDate = history[history.length - 1]?.date;
+  if (change == null || !endDate) return { oneYearReturn: null, returnStart: null, returnEnd: null };
+  const points = replayWindow(history, "1Y", endDate).points;
+  const start = points[0];
+  const end = points[points.length - 1];
+  if (!start || !end) return { oneYearReturn: null, returnStart: null, returnEnd: null };
+  return { oneYearReturn: change, returnStart: start.date, returnEnd: end.date };
+}
+
 function toExplorer(
   stock: Stock,
   quote: Quote,
@@ -204,7 +220,7 @@ function toExplorer(
     epsGrowth: fundamentals.epsGrowth,
     debtToEquity: fundamentals.debtToEquity,
     payoutRatio: fundamentals.payoutRatio,
-    oneYearReturn: oneYearReturn(history),
+    ...priceChangeWindow(history),
     asOf: quote.asOf,
     ...(quote.fetchedAt ? { fetchedAt: quote.fetchedAt } : {}),
     isSynthetic,

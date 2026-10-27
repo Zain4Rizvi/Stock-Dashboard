@@ -9,9 +9,18 @@ async function Sky() {
   return <GalaxyExplorer universe={universe} />;
 }
 
+function SkySkeleton() {
+  return (
+    <div className="grid flex-1 content-center justify-items-center gap-3 px-4" aria-busy="true" aria-label="Loading the sky">
+      <p className="text-sm text-mist">Loading the sky</p>
+      <div className="page-bone h-36 w-full max-w-lg rounded-3xl" />
+    </div>
+  );
+}
+
 export default function Home() {
   return (
-    <Suspense fallback={<div className="grid flex-1 place-items-center text-sm text-mist">Setting the sky…</div>}>
+    <Suspense fallback={<SkySkeleton />}>
       <Sky />
     </Suspense>
   );

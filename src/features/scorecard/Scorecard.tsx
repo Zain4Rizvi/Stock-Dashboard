@@ -1,4 +1,5 @@
 import { DataBadge } from "@/components/ui/DataBadge";
+import { replayWindow } from "@/lib/finance/returns";
 import { formatCad, formatCompactCad, formatNumber, formatPercent } from "@/lib/format";
 import { GLOSSARY } from "@/lib/scoring/glossary";
 import type { Scorecard as ScorecardModel } from "@/lib/scoring/score";
@@ -31,6 +32,16 @@ function glossaryNotes(id: keyof typeof METRIC_TERMS) {
   return GLOSSARY.filter((entry) => terms.includes(entry.term));
 }
 
+function pastPriceChange(history: Snapshot["history"], value: number | null): string | null {
+  const endDate = history[history.length - 1]?.date;
+  if (value == null || !endDate) return null;
+  const points = replayWindow(history, "1Y", endDate).points;
+  const start = points[0]?.date;
+  const end = points[points.length - 1]?.date;
+  if (!start || !end) return null;
+  return `${formatPercent(value, 1, true)} price change ${start} to ${end}. Not a total return and not the TSX composite.`;
+}
+
 function GradeBadge({ grade }: { grade: string }) {
   return (
     <span
@@ -44,6 +55,7 @@ function GradeBadge({ grade }: { grade: string }) {
 export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: ScorecardModel }) {
   const changeUp = snapshot.quote.change >= 0;
   const volume = snapshot.quote.volume;
+  const priceChange = pastPriceChange(snapshot.history, score.oneYearReturn);
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
       <header className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
@@ -93,9 +105,7 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
         <GradeBadge grade={score.overall} />
         <div>
           <p className="leading-7">{score.summary}</p>
-          {score.oneYearReturn != null ? (
-            <p className="mt-2 text-sm text-mist">Past year {formatPercent(score.oneYearReturn, 1, true)}</p>
-          ) : null}
+          {priceChange ? <p className="mt-2 text-sm text-mist">{priceChange}</p> : null}
           <p className="mt-1 text-sm text-mist">Grades describe the latest numbers. They are not a buy rating.</p>
         </div>
       </section>

@@ -140,4 +140,48 @@ describe("gateway", () => {
     expect(snapshot?.fallback).toBe(true);
     expect(snapshot?.freshness).toBe("demo");
   });
+
+  it("labels a two-point replay window with its close dates", async () => {
+    const cache = new MemoryCache();
+    await cache.set(
+      "history:RY.TO",
+      {
+        source: "yahoo",
+        data: [
+          { date: "2024-01-02", close: 40 },
+          { date: "2025-10-24", close: 80 },
+          { date: "2026-10-23", close: 100 },
+        ],
+      },
+      60,
+    );
+    const gateway = createGateway({
+      live: null,
+      seed: createSeedProvider(file),
+      cache,
+    });
+    const row = (await gateway.getExplorer())[0];
+    expect(row.oneYearReturn).toBe(25);
+    expect(row.returnStart).toBe("2025-10-24");
+    expect(row.returnEnd).toBe("2026-10-23");
+  });
+
+  it("returns a null price change and null dates for a one-point history", async () => {
+    const cache = new MemoryCache();
+    await cache.set(
+      "history:RY.TO",
+      { source: "yahoo", data: [{ date: "2026-10-23", close: 100 }] },
+      60,
+    );
+    const gateway = createGateway({
+      live: null,
+      seed: createSeedProvider(file),
+      cache,
+    });
+    const row = (await gateway.getExplorer())[0];
+    expect(row.oneYearReturn).toBeNull();
+    expect(row.oneYearReturn).not.toBe(0);
+    expect(row.returnStart).toBeNull();
+    expect(row.returnEnd).toBeNull();
+  });
 });

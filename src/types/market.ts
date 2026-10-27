@@ -75,7 +75,12 @@ export interface ExplorerItem {
   epsGrowth: number | null;
   debtToEquity: number | null;
   payoutRatio: number | null;
+  /** Close-to-close price change for the one-year window. Null when that window has fewer than two closes. */
   oneYearReturn: number | null;
+  /** First close date in that window. Null when oneYearReturn is null. */
+  returnStart: string | null;
+  /** Last close date in that window. Null when oneYearReturn is null. */
+  returnEnd: string | null;
   /** Quote timestamp. The badge shows this date. */
   asOf: string;
   /** Present when asOf came from the exchange clock. */
