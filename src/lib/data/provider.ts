@@ -12,7 +12,7 @@ export interface MarketDataProvider {
   getStock(symbol: string): Promise<Stock | null>;
   getQuote(symbol: string): Promise<Quote>;
   getHistory(symbol: string): Promise<PricePoint[]>;
-  getFundamentals(symbol: string): Promise<Fundamentals>;
+  getFundamentals(symbol: string, known?: Quote): Promise<Fundamentals>;
   getNews(symbol: string): Promise<NewsItem[]>;
 }
 

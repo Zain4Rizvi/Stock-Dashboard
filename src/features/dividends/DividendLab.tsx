@@ -1,5 +1,6 @@
 "use client";
 
+import { UniverseBadge } from "@/components/ui/DataBadge";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { simulateDividend } from "@/lib/finance/drip";
 import { formatCad } from "@/lib/format";
@@ -28,8 +29,9 @@ export function DividendLab({ universe }: { universe: ExplorerItem[] }) {
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
-      <header>
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-display text-5xl">Dividends</h1>
+        <UniverseBadge universe={universe} />
       </header>
       <Disclaimer prominent />
       <div className="flex flex-wrap gap-4">

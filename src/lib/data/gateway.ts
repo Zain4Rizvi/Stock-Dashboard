@@ -36,17 +36,17 @@ async function readThrough<T>(input: {
   fallback: () => Promise<T>;
   fallbackSource: DataSource;
   fallbackSynthetic: boolean;
-}): Promise<{ data: T; source: DataSource; isSynthetic: boolean }> {
+}): Promise<{ data: T; source: DataSource; isSynthetic: boolean; fallback: boolean }> {
   if (!input.refresh) {
     const cached = await input.cache.get<CachedValue<T>>(input.key);
-    if (cached) return { data: cached.data, source: cached.source, isSynthetic: cached.source === "synthetic" };
+    if (cached) return { data: cached.data, source: cached.source, isSynthetic: cached.source === "synthetic", fallback: false };
     const seeded = await input.fallback();
-    return { data: seeded, source: input.fallbackSource, isSynthetic: input.fallbackSynthetic };
+    return { data: seeded, source: input.fallbackSource, isSynthetic: input.fallbackSynthetic, fallback: true };
   }
 
   const cached = await input.cache.get<CachedValue<T>>(input.key);
   if (cached && cached.source !== "synthetic") {
-    return { data: cached.data, source: cached.source, isSynthetic: false };
+    return { data: cached.data, source: cached.source, isSynthetic: false, fallback: false };
   }
 
   if (input.live && (await input.rates.take(input.live.id))) {
@@ -54,15 +54,15 @@ async function readThrough<T>(input: {
       const data = await input.fetchLive();
       const source = input.live.id as DataSource;
       await input.cache.set(input.key, { source, data } satisfies CachedValue<T>, input.ttl);
-      return { data, source, isSynthetic: false };
+      return { data, source, isSynthetic: false, fallback: false };
     } catch {
       /* live providers fail closed into cache or seed */
     }
   }
 
-  if (cached) return { data: cached.data, source: cached.source, isSynthetic: cached.source === "synthetic" };
+  if (cached) return { data: cached.data, source: cached.source, isSynthetic: cached.source === "synthetic", fallback: false };
   const seeded = await input.fallback();
-  return { data: seeded, source: input.fallbackSource, isSynthetic: input.fallbackSynthetic };
+  return { data: seeded, source: input.fallbackSource, isSynthetic: input.fallbackSynthetic, fallback: true };
 }
 
 export function createGateway(deps: {
@@ -125,7 +125,7 @@ export function createGateway(deps: {
       fallbackSource: origin.source,
       fallbackSynthetic: origin.isSynthetic,
     });
-    return { stock, quote, history, fundamentals, news };
+    return { stock, quote, history, fundamentals, news, generatedAt: origin.generatedAt };
   }
 
   return {
@@ -135,6 +135,7 @@ export function createGateway(deps: {
         stocks.map(async (stock) => {
           const parts = await loadParts(stock.symbol, false);
           if (!parts) return null;
+          const fallback = parts.quote.fallback;
           return toExplorer(
             parts.stock,
             parts.quote.data,
@@ -142,7 +143,9 @@ export function createGateway(deps: {
             parts.history.data,
             parts.quote.isSynthetic,
             parts.quote.source,
-            parts.quote.isSynthetic ? "demo" : "snapshot",
+            parts.quote.isSynthetic || fallback ? "demo" : "snapshot",
+            fallback,
+            fallback ? parts.generatedAt : undefined,
           );
         }),
       );
@@ -155,6 +158,7 @@ export function createGateway(deps: {
       const marketCap = parts.quote.data.marketCap ?? parts.fundamentals.data.marketCap;
       const quote = marketCap == null ? parts.quote.data : { ...parts.quote.data, marketCap: parts.quote.data.marketCap ?? marketCap };
       const synthetic = parts.quote.isSynthetic || parts.history.isSynthetic || parts.fundamentals.isSynthetic;
+      const fallback = parts.quote.fallback;
       return {
         stock: parts.stock,
         quote,
@@ -166,7 +170,9 @@ export function createGateway(deps: {
         news: parts.news.data,
         isSynthetic: synthetic,
         source: parts.quote.source,
-        freshness: synthetic ? "demo" : refresh ? "live" : "snapshot",
+        freshness: synthetic || fallback ? "demo" : refresh ? "live" : "snapshot",
+        fallback,
+        ...(fallback ? { generatedAt: parts.generatedAt } : {}),
       } satisfies Snapshot;
     },
   };
@@ -180,6 +186,8 @@ function toExplorer(
   isSynthetic: boolean,
   source: DataSource,
   freshness: ExplorerItem["freshness"],
+  fallback: boolean,
+  generatedAt?: string,
 ): ExplorerItem {
   return {
     symbol: stock.symbol,
@@ -198,8 +206,11 @@ function toExplorer(
     payoutRatio: fundamentals.payoutRatio,
     oneYearReturn: oneYearReturn(history),
     asOf: quote.asOf,
+    ...(quote.fetchedAt ? { fetchedAt: quote.fetchedAt } : {}),
     isSynthetic,
     source,
     freshness,
+    fallback,
+    ...(fallback && generatedAt ? { generatedAt } : {}),
   };
 }

@@ -9,6 +9,8 @@ export const QuoteSchema = z.object({
   marketCap: z.number().positive().nullable(),
   volume: z.number().nonnegative().nullable(),
   asOf: z.string().min(4),
+  fetchedAt: z.string().min(4).optional(),
+  delayMinutes: z.number().nonnegative().optional(),
 });
 
 export const PricePointSchema = z.object({

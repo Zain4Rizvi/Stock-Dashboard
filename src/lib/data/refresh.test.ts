@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { MemoryCache } from "./cache/memory";
 import { KvCache, type KvBinding } from "./cache/kv";
 import type { MarketDataProvider } from "./provider";
-import { nextBatch, refreshCanadaSlice } from "./refresh";
+import { nextBatch, REFRESH_CURSOR_KEY, REFRESH_STATUS_KEY, refreshCanadaSlice } from "./refresh";
 
-function yahoo(fail: string[] = []): MarketDataProvider {
+function yahoo(fail: string[] = [], quotesPassed: string[] = []): MarketDataProvider {
   return {
     id: "yahoo",
     async listStocks() {
@@ -33,7 +33,8 @@ function yahoo(fail: string[] = []): MarketDataProvider {
         { date: "2026-10-26", close: 10 },
       ];
     },
-    async getFundamentals(symbol: string) {
+    async getFundamentals(symbol: string, known?: { symbol?: string }) {
+      if (known?.symbol === symbol) quotesPassed.push(symbol);
       if (fail.includes(`${symbol}:fund`)) throw new Error("down");
       return {
         symbol,
@@ -79,6 +80,25 @@ describe("daily refresh", () => {
     expect(nextBatch(symbols, 24)).toEqual(symbols.slice(24));
   });
 
+  it("continues at the cursor after the UTC date changes", async () => {
+    const cache = new MemoryCache();
+    const monday = new Date("2026-10-26T22:00:00.000Z");
+    const tuesday = new Date("2026-10-27T22:00:00.000Z");
+    const quotesPassed: string[] = [];
+    const first = await refreshCanadaSlice({ cache, yahoo: yahoo([], quotesPassed), symbols, now: monday });
+    expect(first.refreshed).toEqual(symbols.slice(0, 12));
+    expect(quotesPassed).toEqual(symbols.slice(0, 12));
+    const second = await refreshCanadaSlice({ cache, yahoo: yahoo(), symbols, now: tuesday });
+    expect(second.refreshed).toEqual(symbols.slice(12, 24));
+    expect(await cache.get(REFRESH_CURSOR_KEY)).toBe(24);
+    expect(await cache.get("refresh:cursor:2026-10-27")).toBeNull();
+    expect(await cache.get(REFRESH_STATUS_KEY)).toMatchObject({
+      lastRun: tuesday.toISOString(),
+      refreshed: 12,
+      failed: 0,
+    });
+  });
+
   it("skips a failed name and keeps the previous quote", async () => {
     const cache = new MemoryCache();
     const now = new Date("2026-10-26T22:00:00.000Z");
@@ -94,7 +114,7 @@ describe("daily refresh", () => {
     expect(await cache.get("quote:N1.TO")).toEqual({ source: "yahoo", data: { price: 4 } });
     expect((await cache.get<{ data: { price: number } }>("quote:N0.TO"))?.data.price).toBe(10);
     const again = await refreshCanadaSlice({ cache, yahoo: yahoo(), symbols: ["N0.TO", "N1.TO"], now });
-    expect(again.refreshed).toEqual([]);
+    expect(again.refreshed).toEqual(["N0.TO", "N1.TO"]);
   });
 
   it("round-trips a value through KV until it expires", async () => {

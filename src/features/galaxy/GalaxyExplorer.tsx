@@ -1,6 +1,6 @@
 "use client";
 
-import { DataBadge } from "@/components/ui/DataBadge";
+import { UniverseBadge } from "@/components/ui/DataBadge";
 import { formatCad, formatPercent } from "@/lib/format";
 import { useDesk } from "@/lib/storage/desk";
 import type { ExplorerItem } from "@/types/market";
@@ -61,8 +61,6 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
       .slice(0, 6);
   }, [query, universe]);
   const hovered = universe.find((item) => item.symbol === hover) ?? null;
-  const demo = universe.some((item) => item.freshness === "demo");
-  const sample = universe[0];
 
   function open(symbol: string) {
     router.push(`/stock/${symbol}`);
@@ -77,9 +75,7 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
         sector sun means you pay more for each dollar of profit.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {sample ? (
-          <DataBadge freshness={demo ? "demo" : sample.freshness} source={sample.source} asOf={sample.asOf} />
-        ) : null}
+        <UniverseBadge universe={universe} />
         <div className="flex rounded-full border border-cream/15 p-1 text-xs">
           {(["auto", "3d", "2d"] as const).map((option) => (
             <button

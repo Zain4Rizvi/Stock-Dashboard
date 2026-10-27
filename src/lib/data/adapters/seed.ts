@@ -4,7 +4,7 @@ import { assertTsxSymbol } from "@/lib/data/symbols";
 import type { DataSource, Stock } from "@/types/market";
 
 export interface SeedProvider extends MarketDataProvider {
-  origin(symbol: string): { isSynthetic: boolean; source: DataSource };
+  origin(symbol: string): { isSynthetic: boolean; source: DataSource; generatedAt: string };
 }
 
 function liveSource(source: string): DataSource {
@@ -48,12 +48,13 @@ export function createSeedProvider(file: SeedFile): SeedProvider {
       return row(symbol).news;
     },
     origin(symbol: string) {
+      const generatedAt = file.generatedAt;
       try {
         const found = row(symbol);
-        if (found.isSynthetic) return { isSynthetic: true, source: "synthetic" as const };
-        return { isSynthetic: false, source: liveSource(file.source) };
+        if (found.isSynthetic) return { isSynthetic: true, source: "synthetic" as const, generatedAt };
+        return { isSynthetic: false, source: liveSource(file.source), generatedAt };
       } catch {
-        return { isSynthetic: true, source: "synthetic" as const };
+        return { isSynthetic: true, source: "synthetic" as const, generatedAt };
       }
     },
   };

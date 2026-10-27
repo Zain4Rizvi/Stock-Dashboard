@@ -1,5 +1,6 @@
 "use client";
 
+import { UniverseBadge } from "@/components/ui/DataBadge";
 import type { Scorecard } from "@/lib/scoring/score";
 import type { ExplorerItem } from "@/types/market";
 import { useRouter } from "next/navigation";
@@ -26,9 +27,12 @@ export function CompareDesk({
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
-      <header>
-        <h1 className="font-display text-5xl">Put them side by side</h1>
-        <p className="mt-3 max-w-2xl text-mist">Pick up to three companies. The shape is the report card, not a winner's podium.</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-5xl">Put them side by side</h1>
+          <p className="mt-3 max-w-2xl text-mist">Pick up to three companies. The shape is the report card, not a winner's podium.</p>
+        </div>
+        <UniverseBadge universe={universe} />
       </header>
       <div className="grid gap-4">
         {sectors.map((sector) => (

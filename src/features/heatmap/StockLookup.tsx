@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { UniverseBadge } from "@/components/ui/DataBadge";
 import { PriceChart } from "@/features/scorecard/PriceChart";
 import { PricePointSchema, QuoteSchema, StockSchema } from "@/lib/data/schemas";
 import { formatCad, formatPercent } from "@/lib/format";
@@ -129,6 +130,7 @@ export function StockLookup({ universe, querySymbol }: { universe: ExplorerItem[
 
   return (
     <div className="grid gap-6">
+      <UniverseBadge universe={universe} />
       <form
         role="search"
         onSubmit={(event) => {

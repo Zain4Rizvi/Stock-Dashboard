@@ -24,7 +24,12 @@ export interface Quote {
   previousClose: number | null;
   marketCap: number | null;
   volume: number | null;
+  /** Exchange time when Yahoo sent regularMarketTime. Otherwise the fetch time. */
   asOf: string;
+  /** Cron clock. Present only when asOf is the exchange time. */
+  fetchedAt?: string;
+  /** Yahoo exchangeDataDelayedBy, in minutes. Omitted when Yahoo does not send it. */
+  delayMinutes?: number;
 }
 
 export interface PricePoint {
@@ -73,9 +78,15 @@ export interface ExplorerItem {
   oneYearReturn: number | null;
   /** Quote timestamp. The badge shows this date. */
   asOf: string;
+  /** Present when asOf came from the exchange clock. */
+  fetchedAt?: string;
   isSynthetic: boolean;
   source: DataSource;
   freshness: Freshness;
+  /** Cache miss served the committed seed instead of a cron quote. */
+  fallback?: boolean;
+  /** Seed file generatedAt. Set only when fallback is true. */
+  generatedAt?: string;
 }
 
 export interface Snapshot {
@@ -87,4 +98,8 @@ export interface Snapshot {
   isSynthetic: boolean;
   source: DataSource;
   freshness: Freshness;
+  /** Cache miss served the committed seed instead of a cron quote. */
+  fallback?: boolean;
+  /** Seed file generatedAt. Set only when fallback is true. */
+  generatedAt?: string;
 }
