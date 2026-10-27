@@ -6,7 +6,7 @@ import { sectorLabel, sectorPlain } from "@/lib/scoring/glossary";
 import type { Scorecard } from "@/lib/scoring/score";
 import type { ExplorerItem } from "@/types/market";
 import { useRouter } from "next/navigation";
-import { contrast } from "./words";
+import { contrast, priceChangeVersusFund, priceWindowLabel, shelfMedianText, shelfPriceChangeMedian } from "./words";
 import { Radar } from "./Radar";
 
 export function CompareDesk({
@@ -20,6 +20,30 @@ export function CompareDesk({
 }) {
   const router = useRouter();
   const sectors = [...new Set(universe.map((item) => item.sector))].sort();
+  const graded = cards.filter((card) => universe.find((item) => item.symbol === card.symbol)?.kind !== "fund");
+  const xiu = universe.find((item) => item.symbol === "XIU.TO");
+  const versusFund =
+    xiu && cards.length > 0
+      ? priceChangeVersusFund(
+          cards.map((card) => {
+            const item = universe.find((entry) => entry.symbol === card.symbol);
+            return {
+              symbol: card.symbol,
+              name: card.name,
+              oneYearReturn: item?.oneYearReturn ?? null,
+              returnStart: item?.returnStart ?? null,
+              returnEnd: item?.returnEnd ?? null,
+            };
+          }),
+          {
+            symbol: xiu.symbol,
+            name: xiu.name,
+            oneYearReturn: xiu.oneYearReturn,
+            returnStart: xiu.returnStart,
+            returnEnd: xiu.returnEnd,
+          },
+        )
+      : null;
 
   function toggle(symbol: string) {
     const next = selected.includes(symbol) ? selected.filter((item) => item !== symbol) : [...selected, symbol].slice(-3);
@@ -32,7 +56,7 @@ export function CompareDesk({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-5xl">Put them side by side</h1>
-          <p className="mt-3 max-w-2xl text-mist">Pick up to three companies. The shape is the report card, not a winner's podium.</p>
+          <p className="mt-3 max-w-2xl text-mist">Pick up to three names. The shape is the report card, not a winner's podium.</p>
         </div>
         <UniverseBadge universe={universe} />
       </header>
@@ -66,12 +90,21 @@ export function CompareDesk({
       </div>
       {cards.length > 0 ? (
         <>
-          <Radar cards={cards.map((card) => ({ name: card.name, score: card.score }))} />
+          {cards.map((card) => {
+            const kind = universe.find((item) => item.symbol === card.symbol)?.kind;
+            if (kind !== "fund") return null;
+            return (
+              <p key={card.symbol} className="text-sm leading-6 text-mist">
+                {card.score.summary}
+              </p>
+            );
+          })}
+          <Radar cards={graded.map((card) => ({ name: card.name, score: card.score }))} />
           <ul className="grid gap-2">
             {cards[0].score.metrics.map((metric) => {
               const line = contrast(
                 metric.label,
-                cards.map((card) => ({
+                graded.map((card) => ({
                   name: card.name,
                   score: card.score.metrics.find((item) => item.id === metric.id)?.score ?? null,
                 })),
@@ -83,8 +116,9 @@ export function CompareDesk({
               ) : null;
             })}
           </ul>
+          {versusFund ? <p className="text-sm leading-6 text-cream/90">{versusFund}</p> : null}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead>
                 <tr className="text-mist">
                   <th className="py-2 font-medium">Measure</th>
@@ -93,6 +127,7 @@ export function CompareDesk({
                       {card.name}
                     </th>
                   ))}
+                  <th className="py-2 font-medium">Shelf median</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,18 +139,39 @@ export function CompareDesk({
                       return (
                         <td key={card.symbol} className="py-3 pr-4">
                           <span className="font-display text-2xl">{found?.grade}</span>
+                          <span className="mt-1 block">{found?.display}</span>
                           <span className="mt-1 block text-mist">{found?.headline}</span>
                         </td>
                       );
                     })}
+                    <td className="py-3 pr-4 text-mist">{shelfMedianText(metric.id, universe)}</td>
                   </tr>
                 ))}
+                <tr className="border-t border-cream/10">
+                  <th className="py-3 font-medium">Price change</th>
+                  {cards.map((card) => {
+                    const item = universe.find((entry) => entry.symbol === card.symbol);
+                    return (
+                      <td key={card.symbol} className="py-3 pr-4">
+                        {priceWindowLabel({
+                          oneYearReturn: item?.oneYearReturn ?? null,
+                          returnStart: item?.returnStart ?? null,
+                          returnEnd: item?.returnEnd ?? null,
+                        })}
+                      </td>
+                    );
+                  })}
+                  <td className="py-3 pr-4 text-mist">{shelfPriceChangeMedian(universe)}</td>
+                </tr>
               </tbody>
             </table>
           </div>
+          <p className="text-sm leading-6 text-mist">
+            The shelf median is the middle company on this shelf. Funds are left out. For risk, that middle number is debt, because a price swing is not stored for every name.
+          </p>
         </>
       ) : (
-        <p className="text-mist">Choose a company to start. Two makes a comparison. Three is plenty.</p>
+        <p className="text-mist">Choose a name to start. Two makes a comparison. Three is plenty.</p>
       )}
     </div>
   );

@@ -92,6 +92,8 @@ export interface ExplorerItem {
   returnEnd: string | null;
   /** Quote timestamp. The badge shows this date. */
   asOf: string;
+  /** UTC day from the quote's exDividendDate. Omitted when the quote did not include it. */
+  exDividendDate?: string;
   /** Present when asOf came from the exchange clock. */
   fetchedAt?: string;
   isSynthetic: boolean;

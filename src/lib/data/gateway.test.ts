@@ -166,6 +166,30 @@ describe("gateway", () => {
     expect(row.returnEnd).toBe("2026-10-23");
   });
 
+  it("passes an ex-dividend day through only when the quote stored one", async () => {
+    const cache = new MemoryCache();
+    await cache.set(
+      "quote:RY.TO",
+      { source: "yahoo", data: { ...file.stocks[0].quote, exDividendDate: "2026-12-01" } },
+      60,
+    );
+    const gateway = createGateway({
+      live: null,
+      seed: createSeedProvider(file),
+      cache,
+    });
+    const row = (await gateway.getExplorer()).find((item) => item.symbol === "RY.TO");
+    expect(row?.exDividendDate).toBe("2026-12-01");
+
+    const seeded = createGateway({
+      live: null,
+      seed: createSeedProvider(file),
+      cache: new MemoryCache(),
+    });
+    const seedRow = (await seeded.getExplorer()).find((item) => item.symbol === "RY.TO");
+    expect(seedRow?.exDividendDate).toBeUndefined();
+  });
+
   it("returns a null price change and null dates for a one-point history", async () => {
     const cache = new MemoryCache();
     await cache.set(
