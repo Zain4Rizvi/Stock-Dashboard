@@ -59,6 +59,12 @@ export const PAGE_BRIEFS = {
       "The company page shows the share price chart and the figures behind five grades: valuation (price-to-earnings), profitability (return on equity), earnings growth, dividend yield and payout, and risk (debt and price swings). Each row shows the number, a grade, and why. Expand a row for the plain-English reason. Grades describe the latest numbers. They are not a buy rating. The briefing and headlines explain those numbers and do not predict a price.",
     tryThis: "Open one grade and read why it landed there.",
   },
+  canada: {
+    title: "In Canada",
+    brief:
+      "Plain notes on TFSA, RRSP, and FHSA accounts, the dividend tax credit, and US dividend withholding. The sector mix is the share of market cap on this shelf, not the S&P/TSX weight. A few Canadian funds appear after the weekday evening update saves a price. Rules change. This is not advice, and it does not pick an account.",
+    tryThis: "Read one account, then see whether a fund has a price yet.",
+  },
   ask: {
     title: "Ask",
     brief:

@@ -107,4 +107,65 @@ describe("scoreStock", () => {
     expect(income?.display).toBe("0%");
     expect(income?.grade).toBe("N/A");
   });
+
+  it("leaves missing P/E, ROE, and payout blank", () => {
+    const card = scoreStock({
+      name: "Example",
+      sector: "Shops",
+      fundamentals: fundamentals({
+        pe: null,
+        roe: null,
+        payoutRatio: null,
+        dividendYield: 2.5,
+        symbol: "EX.TO",
+      }),
+      history: history(100, 0.01),
+    });
+    expect(card.metrics.find((metric) => metric.id === "valuation")?.display).toBe("—");
+    expect(card.metrics.find((metric) => metric.id === "valuation")?.grade).toBe("N/A");
+    expect(card.metrics.find((metric) => metric.id === "profitability")?.display).toBe("—");
+    expect(card.metrics.find((metric) => metric.id === "profitability")?.grade).toBe("N/A");
+    const income = card.metrics.find((metric) => metric.id === "income");
+    expect(income?.detail).toMatch(/don't have a payout ratio/i);
+    expect(income?.detail).not.toMatch(/payout ratio is \d/i);
+  });
+
+  it("does not give a fund a company letter grade", () => {
+    const card = scoreStock({
+      name: "iShares Core Equity ETF Portfolio",
+      sector: "Funds",
+      kind: "fund",
+      fundamentals: fundamentals({
+        pe: 12,
+        roe: 20,
+        epsGrowth: 12,
+        dividendYield: 2,
+        payoutRatio: 40,
+        symbol: "XEQT.TO",
+      }),
+      history: history(40, 0.05),
+    });
+    expect(card.overall).toBe("N/A");
+    expect(card.overallScore).toBeNull();
+    expect(card.metrics.every((metric) => metric.grade === "N/A")).toBe(true);
+    expect(card.metrics.every((metric) => metric.score == null)).toBe(true);
+    const blank = scoreStock({
+      name: "iShares Core Equity ETF Portfolio",
+      sector: "Funds",
+      kind: "fund",
+      fundamentals: fundamentals({
+        pe: null,
+        roe: null,
+        payoutRatio: null,
+        dividendYield: null,
+        epsGrowth: null,
+        debtToEquity: null,
+        symbol: "XEQT.TO",
+      }),
+      history: history(40, 0.05),
+    });
+    expect(blank.metrics.find((metric) => metric.id === "valuation")?.display).toBe("—");
+    expect(blank.metrics.find((metric) => metric.id === "profitability")?.display).toBe("—");
+    expect(blank.metrics.find((metric) => metric.id === "income")?.detail).not.toMatch(/payout ratio is \d/i);
+  });
 });

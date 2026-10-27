@@ -7,6 +7,8 @@ export type DataSource =
   | "twelvedata"
   | "alphavantage";
 
+export type ListingKind = "company" | "fund";
+
 export interface Stock {
   symbol: string;
   name: string;
@@ -14,6 +16,7 @@ export interface Stock {
   blurb: string;
   currency: "CAD";
   exchange: "TSX";
+  kind: ListingKind;
 }
 
 export interface Quote {
@@ -65,10 +68,12 @@ export interface ExplorerItem {
   name: string;
   sector: string;
   blurb: string;
+  kind: ListingKind;
   price: number;
   change: number;
   changePercent: number;
-  marketCap: number;
+  /** Null when neither the quote nor the fundamentals included a market cap. */
+  marketCap: number | null;
   pe: number | null;
   dividendYield: number | null;
   roe: number | null;

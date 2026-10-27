@@ -184,4 +184,43 @@ describe("gateway", () => {
     expect(row.returnStart).toBeNull();
     expect(row.returnEnd).toBeNull();
   });
+
+  it("lists a fund from the universe without inventing a price", async () => {
+    const seed = createSeedProvider(file);
+    const fund = await seed.getStock("XEQT.TO");
+    expect(fund?.kind).toBe("fund");
+    expect(fund?.name).toBeTruthy();
+    const fundamentals = await seed.getFundamentals("XEQT.TO");
+    expect(fundamentals.pe).toBeNull();
+    expect(fundamentals.roe).toBeNull();
+    expect(fundamentals.payoutRatio).toBeNull();
+    expect(fundamentals.marketCap).toBeNull();
+    await expect(seed.getQuote("XEQT.TO")).rejects.toThrow();
+    const gateway = createGateway({
+      live: null,
+      seed,
+      cache: new MemoryCache(),
+    });
+    const symbols = (await gateway.getExplorer()).map((row) => row.symbol);
+    expect(symbols).toContain("RY.TO");
+    expect(symbols).not.toContain("XEQT.TO");
+    expect(await gateway.getSnapshot("XEQT.TO")).toBeNull();
+  });
+
+  it("shows a fund once the cron quote is cached", async () => {
+    const cache = new MemoryCache();
+    const quote = { ...file.stocks[0].quote, symbol: "XEQT.TO", price: 42.5, marketCap: 8_000_000_000 };
+    await cache.set("quote:XEQT.TO", { source: "yahoo", data: quote }, 60);
+    await cache.set("history:XEQT.TO", { source: "yahoo", data: file.stocks[0].history }, 60);
+    const gateway = createGateway({
+      live: null,
+      seed: createSeedProvider(file),
+      cache,
+    });
+    const row = (await gateway.getExplorer()).find((item) => item.symbol === "XEQT.TO");
+    expect(row?.price).toBe(42.5);
+    expect(row?.kind).toBe("fund");
+    expect(row?.isSynthetic).toBe(false);
+    expect(row?.marketCap).toBe(8_000_000_000);
+  });
 });

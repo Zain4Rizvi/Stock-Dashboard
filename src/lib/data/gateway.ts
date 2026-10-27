@@ -76,6 +76,14 @@ export function createGateway(deps: {
   async function loadParts(symbol: string, refresh: boolean) {
     const stock = await deps.seed.getStock(symbol);
     if (!stock) return null;
+    try {
+      return await readParts(stock, refresh);
+    } catch {
+      return null;
+    }
+  }
+
+  async function readParts(stock: Stock, refresh: boolean) {
     const origin = deps.seed.origin(stock.symbol);
     const quote = await readThrough<Quote>({
       key: `quote:${stock.symbol}`,
@@ -210,10 +218,11 @@ function toExplorer(
     name: stock.name,
     sector: stock.sector,
     blurb: stock.blurb,
+    kind: stock.kind,
     price: quote.price,
     change: quote.change,
     changePercent: quote.changePercent,
-    marketCap: quote.marketCap ?? fundamentals.marketCap ?? 1,
+    marketCap: quote.marketCap ?? fundamentals.marketCap,
     pe: fundamentals.pe,
     dividendYield: fundamentals.dividendYield,
     roe: fundamentals.roe,
