@@ -46,5 +46,20 @@
       "persist": true,
       "head_sampling_rate": 1
     }
+  },
+  // Previews do not inherit production bindings. This namespace is separate so PR previews do not read or write production MARKET_KV.
+  "previews": {
+    "vars": {
+      "CACHE_DRIVER": "kv"
+    },
+    "kv_namespaces": [
+      {
+        "binding": "MARKET_KV",
+        "id": "f7cd9a0811854233bc158637326a1cd1"
+      }
+    ],
+    "images": {
+      "binding": "IMAGES"
+    }
   }
 }
