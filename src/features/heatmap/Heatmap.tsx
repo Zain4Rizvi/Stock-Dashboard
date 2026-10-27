@@ -6,6 +6,16 @@ import type { ExplorerItem } from "@/types/market";
 import { hierarchy, treemap } from "d3";
 import { useEffect, useMemo, useState } from "react";
 
+const NOT_THE_INDEX = "Not a total return and not the TSX composite.";
+
+function priceChangeLabel(item: ExplorerItem) {
+  if (item.oneYearReturn == null || !item.returnStart || !item.returnEnd) return null;
+  return {
+    percent: formatPercent(item.oneYearReturn, 0, true),
+    window: `price change ${item.returnStart} to ${item.returnEnd}`,
+  };
+}
+
 interface Leaf {
   name: string;
   value?: number;
@@ -53,7 +63,7 @@ export function Heatmap({
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px] w-full" aria-label="Market quilt sized by company value and colored by the past year">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[720px] w-full" aria-label="Market quilt sized by company value and colored by each company's price change">
         {leaves.map((leaf) => {
           const item = leaf.data.item;
           if (!item) return null;
@@ -64,7 +74,19 @@ export function Heatmap({
           const w = x1 - x0;
           const h = y1 - y0;
           const active = item.symbol === selected;
-          const pastYear = formatPercent(item.oneYearReturn ?? 0, 0, true);
+          const label = priceChangeLabel(item);
+          const lines =
+            label == null
+              ? null
+              : w >= 64 && h >= 78
+                ? [label.percent, "price change", item.returnStart ?? "", "to", item.returnEnd ?? ""]
+                : w >= 210 && h >= 52
+                  ? [label.percent, label.window]
+                  : null;
+          const accessible = label
+            ? `${item.name}, ${item.symbol}, ${label.percent} ${label.window}. ${NOT_THE_INDEX}`
+            : `${item.name}, ${item.symbol}, price change unavailable`;
+          const clipId = `tile-${item.symbol.replace(/[^A-Za-z0-9]/g, "")}`;
           return (
             <g
               key={item.symbol}
@@ -73,7 +95,7 @@ export function Heatmap({
               role="button"
               tabIndex={0}
               aria-pressed={active}
-              aria-label={`${item.name}, ${item.symbol}, past year ${pastYear}`}
+              aria-label={accessible}
               onClick={() => onSelect(item.symbol)}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") return;
@@ -89,16 +111,22 @@ export function Heatmap({
                 stroke={active ? "#f4f0e6" : "transparent"}
                 strokeWidth={active ? 4 : 0}
               />
-              {w > 54 && h > 36 ? (
-                <>
-                  <text x={10} y={22} fill="#07110d" fontSize={14} fontWeight={650}>
+              <clipPath id={clipId}>
+                <rect width={w} height={h} rx={8} />
+              </clipPath>
+              <g clipPath={`url(#${clipId})`}>
+                <title>{accessible}</title>
+                {w > 48 && h > 28 ? (
+                  <text x={8} y={16} fill="#07110d" fontSize={13} fontWeight={650}>
                     {item.symbol.replace(".TO", "")}
                   </text>
-                  <text x={10} y={40} fill="#07110d" fontSize={12}>
-                    {pastYear}
+                ) : null}
+                {lines?.map((line, index) => (
+                  <text key={`${item.symbol}-${index}`} x={8} y={30 + index * 11} fill="#07110d" fontSize={index === 0 ? 12 : 9}>
+                    {line}
                   </text>
-                </>
-              ) : null}
+                ))}
+              </g>
             </g>
           );
         })}

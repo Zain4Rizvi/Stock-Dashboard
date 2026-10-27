@@ -4,6 +4,16 @@ import { formatPercent } from "@/lib/format";
 import type { ExplorerItem } from "@/types/market";
 import type { PlacedBody } from "./layout";
 
+const NOT_THE_INDEX = "Not a total return and not the TSX composite.";
+
+function priceChangeLabel(item: ExplorerItem | undefined, digits: number) {
+  if (!item || item.oneYearReturn == null || !item.returnStart || !item.returnEnd) return null;
+  return {
+    percent: formatPercent(item.oneYearReturn, digits, true),
+    window: `price change ${item.returnStart} to ${item.returnEnd}`,
+  };
+}
+
 export function GalaxyFlat({
   bodies,
   items,
@@ -27,24 +37,32 @@ export function GalaxyFlat({
               .filter((body) => body.sector === sector && !hidden.has(body.symbol))
               .map((body) => {
                 const item = bySymbol.get(body.symbol);
-                const change = item?.oneYearReturn ?? 0;
+                const label = priceChangeLabel(item, 0);
+                const size = 72 + body.radius * 36;
                 return (
-                  <button
-                    key={body.symbol}
-                    type="button"
-                    onClick={() => onSelect(body.symbol)}
-                    className="grid place-items-center rounded-full border border-cream/15 text-center text-xs font-medium text-ink"
-                    style={{
-                      width: 72 + body.radius * 36,
-                      height: 72 + body.radius * 36,
-                      background: body.color,
-                    }}
-                  >
-                    <span>
-                      {body.symbol.replace(".TO", "")}
-                      <span className="mt-1 block text-[10px]">{formatPercent(change, 0, true)}</span>
-                    </span>
-                  </button>
+                  <div key={body.symbol} className="grid justify-items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onSelect(body.symbol)}
+                      aria-label={
+                        label
+                          ? `${item?.name ?? body.symbol}, ${body.symbol}, ${label.percent} ${label.window}. ${NOT_THE_INDEX}`
+                          : `${body.symbol}, price change unavailable`
+                      }
+                      className="grid place-items-center rounded-full border border-cream/15 text-center text-xs font-medium text-ink"
+                      style={{ width: size, height: size, background: body.color }}
+                    >
+                      <span>
+                        {body.symbol.replace(".TO", "")}
+                        {label ? <span className="mt-1 block text-[10px]">{label.percent}</span> : null}
+                      </span>
+                    </button>
+                    {label ? (
+                      <p className="max-w-40 text-center text-[10px] leading-snug text-mist">
+                        {label.window}. {NOT_THE_INDEX}
+                      </p>
+                    ) : null}
+                  </div>
                 );
               })}
           </div>
