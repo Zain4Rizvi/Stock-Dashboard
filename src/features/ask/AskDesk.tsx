@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { GrowingField } from "@/components/ui/GrowingField";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { postAsk, recentHistory, sourceLine } from "@/lib/llm/client";
 import { DROP_OPTIONS, GOAL_OPTIONS, HORIZON_OPTIONS, type Profile } from "@/lib/llm/schemas";
@@ -186,19 +187,19 @@ export function AskDesk() {
         {error ? <p className="mt-3 text-sm text-loss">{error}</p> : null}
       </div>
       <form
-        className="mt-4 flex shrink-0 flex-wrap gap-2"
+        className="mt-4 flex min-w-0 shrink-0 flex-wrap items-end gap-2"
         onSubmit={(event) => {
           event.preventDefault();
           void send(draft);
         }}
       >
-        <input
+        <GrowingField
           value={draft}
           maxLength={800}
           aria-label="Investing question"
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Ask about a company, a word, or your mix"
-          className="min-w-48 flex-1 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream outline-none placeholder:text-mist"
+          className="min-w-0 flex-1 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream outline-none placeholder:text-mist"
         />
         <Button type="submit" disabled={loading || draft.trim().length === 0}>
           Ask

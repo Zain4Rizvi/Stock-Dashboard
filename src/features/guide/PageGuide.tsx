@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { GrowingField } from "@/components/ui/GrowingField";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { postAsk, recentHistory, sourceLine } from "@/lib/llm/client";
 import { pageBrief, pageIdFromPath } from "@/lib/llm/pages";
@@ -22,7 +23,7 @@ export function PageGuide() {
   const page = pageBrief(pageIdFromPath(pathname));
   const panelId = useId();
   const opener = useRef<HTMLButtonElement>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
   const opened = useRef(false);
   const request = useRef(0);
   const pathRef = useRef(pathname);
@@ -152,13 +153,13 @@ export function PageGuide() {
                 </Link>
               </p>
               <form
-                className="flex gap-2"
+                className="flex min-w-0 items-end gap-2"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void send(draft);
                 }}
               >
-                <input
+                <GrowingField
                   ref={input}
                   value={draft}
                   maxLength={800}
