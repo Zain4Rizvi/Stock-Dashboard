@@ -42,7 +42,7 @@ function writeTrail(trail: string[]) {
 }
 
 function largestSymbol(universe: ExplorerItem[]): string {
-  return universe.reduce((best, item) => (item.marketCap > best.marketCap ? item : best)).symbol;
+  return universe.reduce((best, item) => ((item.marketCap ?? 0) > (best.marketCap ?? 0) ? item : best)).symbol;
 }
 
 function replaceSymbol(symbol: string) {

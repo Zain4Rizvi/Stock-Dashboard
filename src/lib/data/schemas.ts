@@ -46,6 +46,7 @@ export const StockSchema = z.object({
   blurb: z.string().min(1),
   currency: z.literal("CAD"),
   exchange: z.literal("TSX"),
+  kind: z.enum(["company", "fund"]).optional(),
 });
 
 export const SeedStockSchema = z.object({

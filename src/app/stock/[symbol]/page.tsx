@@ -21,6 +21,7 @@ async function StockBody({ params }: { params: Promise<{ symbol: string }> }) {
   const score = scoreStock({
     name: snapshot.stock.name,
     sector: snapshot.stock.sector,
+    kind: snapshot.stock.kind,
     fundamentals: snapshot.fundamentals,
     history: snapshot.history,
   });

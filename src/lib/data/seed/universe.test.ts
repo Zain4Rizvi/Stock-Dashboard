@@ -3,10 +3,13 @@ import { businessDaysEnding, buildPricePath, buildSyntheticSeed } from "./synthe
 import { UNIVERSE } from "./universe";
 
 describe("TSX universe", () => {
-  it("holds 60 unique .TO symbols", () => {
-    expect(UNIVERSE).toHaveLength(60);
+  it("holds 60 unique companies and the fund shelf", () => {
+    const companies = UNIVERSE.filter((company) => company.kind !== "fund");
+    const funds = UNIVERSE.filter((company) => company.kind === "fund").map((company) => company.symbol);
+    expect(companies).toHaveLength(60);
+    expect(funds).toEqual(["XEQT.TO", "VEQT.TO", "VFV.TO", "XIU.TO", "XIC.TO", "VAB.TO"]);
     const symbols = UNIVERSE.map((company) => company.symbol);
-    expect(new Set(symbols).size).toBe(60);
+    expect(new Set(symbols).size).toBe(symbols.length);
     for (const symbol of symbols) expect(symbol.endsWith(".TO")).toBe(true);
   });
 

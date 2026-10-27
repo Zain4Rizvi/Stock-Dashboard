@@ -86,7 +86,10 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
           <p className={changeUp ? "text-aurora" : "text-loss"}>
             {formatCad(snapshot.quote.change)} ({formatPercent(snapshot.quote.changePercent, 2, true)}) today
           </p>
-          <p className="mt-2 text-sm text-mist">About {formatCompactCad(snapshot.quote.marketCap ?? 0)} of company</p>
+          <p className="mt-2 text-sm text-mist">
+            About {formatCompactCad(snapshot.quote.marketCap ?? 0)}{" "}
+            {snapshot.stock.kind === "fund" ? "in the fund" : "of company"}
+          </p>
           {volume != null && volume > 0 ? (
             <p className="text-sm text-mist">{formatNumber(volume, 0)} shares traded</p>
           ) : null}

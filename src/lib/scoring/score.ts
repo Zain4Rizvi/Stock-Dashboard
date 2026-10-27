@@ -1,5 +1,5 @@
 import { annualizedVolatility, oneYearReturn, replayWindow } from "@/lib/finance/returns";
-import type { Fundamentals, PricePoint } from "@/types/market";
+import type { Fundamentals, ListingKind, PricePoint } from "@/types/market";
 
 export type GradeLetter = "A" | "B" | "C" | "D" | "F";
 
@@ -288,6 +288,7 @@ function summarize(name: string, overall: GradeLetter | "N/A"): string {
 export function scoreStock(input: {
   name: string;
   sector: string;
+  kind?: ListingKind;
   fundamentals: Fundamentals;
   history: PricePoint[];
 }): Scorecard {
@@ -305,6 +306,16 @@ export function scoreStock(input: {
       volatility,
     }),
   ];
+  if (input.kind === "fund") {
+    return {
+      overall: "N/A",
+      overallScore: null,
+      summary: `${input.name} is a fund, a basket of investments, so it does not get a company letter grade.`,
+      metrics: metrics.map((metric) => ({ ...metric, grade: "N/A" as const, score: null })),
+      oneYearReturn: oneYearReturn(input.history),
+      volatility,
+    };
+  }
   const scored = metrics.filter((metric) => metric.score != null);
   const overallScore =
     scored.length === 0

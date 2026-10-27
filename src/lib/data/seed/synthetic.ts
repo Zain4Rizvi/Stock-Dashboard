@@ -89,6 +89,7 @@ function companyToSeed(company: UniverseCompany, dates: string[]) {
       blurb: company.blurb,
       currency: "CAD" as const,
       exchange: "TSX" as const,
+      kind: company.kind ?? ("company" as const),
     },
     quote: {
       symbol: company.symbol,
@@ -116,7 +117,12 @@ function companyToSeed(company: UniverseCompany, dates: string[]) {
   };
 }
 
-export function buildSyntheticSeed(companies: UniverseCompany[] = UNIVERSE): SeedFile {
+/** Funds stay off the generated snapshot. Their quotes come from the weekday cron. */
+function companiesForSnapshot(companies: readonly UniverseCompany[]): UniverseCompany[] {
+  return companies.filter((company) => company.kind !== "fund");
+}
+
+export function buildSyntheticSeed(companies: UniverseCompany[] = companiesForSnapshot(UNIVERSE)): SeedFile {
   const dates = businessDaysEnding(SYNTHETIC_AS_OF, 252);
   return {
     generatedAt: `${SYNTHETIC_AS_OF}T16:00:00.000Z`,

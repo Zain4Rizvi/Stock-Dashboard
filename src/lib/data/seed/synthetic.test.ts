@@ -5,10 +5,11 @@ import { buildPricePath, buildSyntheticSeed, businessDaysEnding, SYNTHETIC_AS_OF
 
 describe("synthetic TSX snapshot", () => {
   it("covers 60 unique companies", () => {
-    const symbols = UNIVERSE.map((company) => company.symbol);
+    const symbols = UNIVERSE.filter((company) => company.kind !== "fund").map((company) => company.symbol);
     expect(symbols).toHaveLength(60);
     expect(new Set(symbols).size).toBe(60);
     for (const symbol of symbols) expect(symbol.endsWith(".TO")).toBe(true);
+    expect(buildSyntheticSeed().stocks.some((stock) => stock.stock.kind === "fund")).toBe(false);
   });
 
   it("builds weekday history that lands on the target price", () => {

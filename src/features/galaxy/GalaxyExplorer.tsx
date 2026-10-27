@@ -78,7 +78,7 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
         universe.map((item) => ({
           symbol: item.symbol,
           sector: item.sector,
-          marketCap: item.marketCap,
+          marketCap: item.marketCap ?? 1,
           pe: item.pe,
           oneYearReturn: item.oneYearReturn,
         })),

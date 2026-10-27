@@ -16,7 +16,7 @@ describe("template language", () => {
     });
     const explanation = templateExplanation(
       {
-        stock: stock.stock,
+        stock: { ...stock.stock, kind: stock.stock.kind ?? "company" },
         quote: stock.quote,
         history: stock.history,
         fundamentals: stock.fundamentals,
@@ -32,7 +32,7 @@ describe("template language", () => {
     expect(explanation.story).toMatch(/demo snapshot/i);
     const mood = templateSentiment(
       {
-        stock: stock.stock,
+        stock: { ...stock.stock, kind: stock.stock.kind ?? "company" },
         quote: stock.quote,
         history: stock.history,
         fundamentals: stock.fundamentals,

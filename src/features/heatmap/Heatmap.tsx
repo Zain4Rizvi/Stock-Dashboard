@@ -44,7 +44,7 @@ export function Heatmap({
         name: sector,
         children: universe
           .filter((item) => item.sector === sector)
-          .map((item) => ({ name: item.symbol, value: Math.max(item.marketCap, 1), item })),
+          .map((item) => ({ name: item.symbol, value: Math.max(item.marketCap ?? 0, 1), item })),
       })),
     })
       .sum((node) => node.value ?? 0)
