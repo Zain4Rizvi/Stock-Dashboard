@@ -112,5 +112,32 @@ describe("gateway", () => {
     expect(snapshot?.freshness).toBe("snapshot");
     const offline = createGateway({ live: null, seed: createSeedProvider(file), cache });
     expect((await offline.getExplorer())[0].price).toBe(321);
+    expect((await offline.getExplorer())[0].fallback).toBe(false);
+  });
+
+  it("returns the seed as a fallback when the cache is empty", async () => {
+    let calls = 0;
+    const seeded = {
+      ...file,
+      source: "yahoo",
+      stocks: [{ ...file.stocks[0], isSynthetic: false }],
+    };
+    const gateway = createGateway({
+      live: failingLive(() => {
+        calls += 1;
+      }),
+      seed: createSeedProvider(seeded),
+      cache: new MemoryCache(),
+    });
+    const explorer = await gateway.getExplorer();
+    expect(calls).toBe(0);
+    expect(explorer[0]?.fallback).toBe(true);
+    expect(explorer[0]?.freshness).toBe("demo");
+    expect(explorer[0]?.generatedAt).toBe(seeded.generatedAt);
+    expect(explorer[0]?.source).toBe("yahoo");
+    const snapshot = await gateway.getSnapshot("RY.TO");
+    expect(calls).toBe(0);
+    expect(snapshot?.fallback).toBe(true);
+    expect(snapshot?.freshness).toBe("demo");
   });
 });

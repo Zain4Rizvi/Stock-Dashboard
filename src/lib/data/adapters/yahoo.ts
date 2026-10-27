@@ -7,7 +7,7 @@ import {
 import { asNumber, asRecord } from "@/lib/data/http";
 import { ProviderError, type MarketDataProvider } from "@/lib/data/provider";
 import { toYahooSymbol } from "@/lib/data/symbols";
-import type { NewsItem, PricePoint } from "@/types/market";
+import type { NewsItem, PricePoint, Quote } from "@/types/market";
 
 /**
  * Unofficial Yahoo Finance adapter for development only.
@@ -46,6 +46,35 @@ async function yahooClient(): Promise<YahooClient> {
   return clientPromise;
 }
 
+function marketTimeIso(value: unknown): string | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(value > 1e12 ? value : value * 1000);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  return null;
+}
+
+/** asOf is regularMarketTime when Yahoo sends it. Fetch time stays on fetchedAt. */
+export function quoteClock(
+  raw: Record<string, unknown>,
+  fetchedAt: Date,
+): { asOf: string; fetchedAt?: string; delayMinutes?: number } {
+  const asOf = marketTimeIso(raw.regularMarketTime);
+  const delay = asNumber(raw.exchangeDataDelayedBy);
+  const delayMinutes = delay == null || delay < 0 ? undefined : delay;
+  if (asOf) {
+    return delayMinutes == null
+      ? { asOf, fetchedAt: fetchedAt.toISOString() }
+      : { asOf, fetchedAt: fetchedAt.toISOString(), delayMinutes };
+  }
+  return delayMinutes == null ? { asOf: fetchedAt.toISOString() } : { asOf: fetchedAt.toISOString(), delayMinutes };
+}
+
 function yearAgo(): Date {
   const date = new Date();
   date.setUTCFullYear(date.getUTCFullYear() - 1);
@@ -82,7 +111,7 @@ export function createYahooProvider(): MarketDataProvider {
         previousClose: previous,
         marketCap: asNumber(raw.marketCap),
         volume: asNumber(raw.regularMarketVolume),
-        asOf: new Date().toISOString(),
+        ...quoteClock(raw, new Date()),
       });
     },
     async getHistory(symbol: string) {
@@ -93,7 +122,7 @@ export function createYahooProvider(): MarketDataProvider {
       if (points.length < 20) throw new ProviderError(`Short history for ${ticker}`, "yahoo");
       return points.map((point) => PricePointSchema.parse(point));
     },
-    async getFundamentals(symbol: string) {
+    async getFundamentals(symbol: string, known?: Quote) {
       const ticker = toYahooSymbol(symbol);
       const yahoo = await yahooClient();
       const summary = asRecord(
@@ -104,7 +133,9 @@ export function createYahooProvider(): MarketDataProvider {
       const stats = asRecord(summary?.defaultKeyStatistics) ?? {};
       const financial = asRecord(summary?.financialData) ?? {};
       const detail = asRecord(summary?.summaryDetail) ?? {};
-      const quote = asRecord(await yahoo.quote(ticker)) ?? {};
+      const quote: Record<string, unknown> = known
+        ? { marketCap: known.marketCap }
+        : (asRecord(await yahoo.quote(ticker)) ?? {});
       const pe = asNumber(detail.trailingPE) ?? asNumber(quote.trailingPE) ?? asNumber(stats.trailingPE);
       const epsGrowth =
         percentFromRatio(asNumber(financial.earningsGrowth) ?? asNumber(stats.earningsQuarterlyGrowth));

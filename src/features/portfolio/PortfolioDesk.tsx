@@ -15,7 +15,9 @@ import { z } from "zod";
 
 const HoldingSnapshotSchema = z.object({
   stock: StockSchema.pick({ name: true }),
-  quote: QuoteSchema.pick({ price: true }),
+  quote: QuoteSchema.pick({ price: true, asOf: true, fetchedAt: true }),
+  fallback: z.boolean().optional(),
+  generatedAt: z.string().optional(),
   history: z.array(PricePointSchema),
   isSynthetic: z.boolean(),
   source: z.enum(["synthetic", "yahoo", "fmp", "twelvedata", "alphavantage"]),
@@ -174,7 +176,16 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
           <h1 className="font-display text-5xl">Portfolio</h1>
           <p className="mt-3 max-w-2xl leading-7 text-mist">A practice mix of shares. Nothing is bought.</p>
         </div>
-        {badge ? <DataBadge freshness={badge.freshness} source={badge.source} /> : null}
+        {badge ? (
+          <DataBadge
+            freshness={badge.freshness}
+            source={badge.source}
+            asOf={badge.asOf}
+            fetchedAt={badge.fetchedAt}
+            fallback={badge.fallback}
+            generatedAt={badge.generatedAt}
+          />
+        ) : null}
       </header>
       <Disclaimer prominent />
       {model.outlook ? <Summary outlook={model.outlook} /> : null}
@@ -276,18 +287,52 @@ function mixBadge(
   holdings: Holding[],
   loaded: Record<string, HoldingSnapshot | null>,
   bySymbol: Map<string, ExplorerItem>,
-): { freshness: Freshness; source: DataSource } | null {
+): {
+  freshness: Freshness;
+  source: DataSource;
+  asOf?: string;
+  fetchedAt?: string;
+  fallback?: boolean;
+  generatedAt?: string;
+} | null {
+  let chosen: {
+    freshness: Freshness;
+    source: DataSource;
+    asOf?: string;
+    fetchedAt?: string;
+    fallback?: boolean;
+    generatedAt?: string;
+  } | null = null;
   for (const holding of holdings) {
     const snap = loaded[holding.symbol];
-    if (snap && (snap.isSynthetic || snap.freshness === "demo")) return { freshness: "demo", source: snap.source };
     const item = bySymbol.get(holding.symbol);
-    if (item && (item.isSynthetic || item.freshness === "demo")) return { freshness: "demo", source: item.source };
+    const row = snap
+      ? {
+          freshness: snap.freshness,
+          source: snap.source,
+          asOf: snap.quote.asOf,
+          fetchedAt: snap.quote.fetchedAt,
+          fallback: snap.fallback,
+          generatedAt: snap.generatedAt,
+        }
+      : item
+        ? {
+            freshness: item.freshness,
+            source: item.source,
+            asOf: item.asOf,
+            fetchedAt: item.fetchedAt,
+            fallback: item.fallback,
+            generatedAt: item.generatedAt,
+          }
+        : null;
+    if (!row) continue;
+    const demo = snap
+      ? snap.isSynthetic || snap.freshness === "demo" || Boolean(snap.fallback)
+      : Boolean(item?.isSynthetic || item?.freshness === "demo" || item?.fallback);
+    if (demo) return { ...row, freshness: row.freshness === "live" ? "demo" : row.freshness };
+    if (!chosen || (row.asOf && chosen.asOf && row.asOf < chosen.asOf)) chosen = row;
   }
-  for (const holding of holdings) {
-    const snap = loaded[holding.symbol];
-    if (snap) return { freshness: snap.freshness, source: snap.source };
-  }
-  return null;
+  return chosen;
 }
 
 function Summary({ outlook }: { outlook: PortfolioOutlook }) {

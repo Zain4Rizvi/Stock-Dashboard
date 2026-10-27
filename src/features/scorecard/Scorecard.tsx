@@ -61,7 +61,14 @@ export function ScorecardView({ snapshot, score }: { snapshot: Snapshot; score: 
         </div>
         <div className="rounded-3xl border border-cream/10 bg-pine/80 p-5">
           <div className="flex flex-wrap gap-2">
-            <DataBadge freshness={snapshot.freshness} source={snapshot.source} asOf={snapshot.quote.asOf} />
+            <DataBadge
+              freshness={snapshot.freshness}
+              source={snapshot.source}
+              asOf={snapshot.quote.asOf}
+              fetchedAt={snapshot.quote.fetchedAt}
+              fallback={snapshot.fallback}
+              generatedAt={snapshot.generatedAt}
+            />
           </div>
           <p className="mt-3 font-display text-4xl">{formatCad(snapshot.quote.price)}</p>
           <p className={changeUp ? "text-aurora" : "text-loss"}>

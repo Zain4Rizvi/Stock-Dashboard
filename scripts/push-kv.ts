@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { createYahooProvider } from "../src/lib/data/adapters/yahoo";
 import { KvCache, type KvBinding } from "../src/lib/data/cache/kv";
 import type { MarketDataProvider } from "../src/lib/data/provider";
-import { refreshCanadaSlice, refreshCursorKey } from "../src/lib/data/refresh";
+import { REFRESH_CURSOR_KEY, refreshCanadaSlice } from "../src/lib/data/refresh";
 import { UNIVERSE } from "../src/lib/data/seed/universe";
 
 class MemKv implements KvBinding {
@@ -39,9 +39,9 @@ function paced(inner: MarketDataProvider, ms: number): MarketDataProvider {
       await gate();
       return inner.getHistory(symbol);
     },
-    async getFundamentals(symbol) {
+    async getFundamentals(symbol, known) {
       await gate();
-      return inner.getFundamentals(symbol);
+      return inner.getFundamentals(symbol, known);
     },
   };
 }
@@ -56,20 +56,24 @@ async function main(): Promise<void> {
   for (let pass = 0; pass < 2; pass += 1) {
     if (pass === 1) {
       if (failed.size === 0) break;
-      await cache.delete(refreshCursorKey(new Date().toISOString().slice(0, 10)));
+      await cache.delete(REFRESH_CURSOR_KEY);
     }
     const pending = pass === 0 ? symbols : [...failed];
     failed.clear();
+    let covered = 0;
     for (;;) {
       const result = await refreshCanadaSlice({ cache, yahoo, symbols: pending });
       console.log(`pass ${pass}: refreshed ${result.refreshed.length}, failed ${result.failed.length}`);
       for (const symbol of result.failed) failed.add(symbol);
-      if (result.refreshed.length + result.failed.length === 0) break;
+      const step = result.refreshed.length + result.failed.length;
+      if (step === 0) break;
+      covered += step;
+      if (covered >= pending.length) break;
     }
   }
 
   const pairs = [...kv.store.entries()]
-    .filter(([key]) => !key.startsWith("refresh:cursor:"))
+    .filter(([key]) => !key.startsWith("refresh:"))
     .map(([key, value]) => ({ key, value }));
   writeFileSync(".tmp/kv-bulk.json", JSON.stringify(pairs));
   console.log(`wrote ${pairs.length} keys, still failed: ${[...failed].join(", ") || "none"}`);
