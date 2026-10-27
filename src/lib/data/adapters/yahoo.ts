@@ -75,6 +75,25 @@ export function quoteClock(
   return delayMinutes == null ? { asOf: fetchedAt.toISOString() } : { asOf: fetchedAt.toISOString(), delayMinutes };
 }
 
+function eventDay(value: unknown): string | null {
+  const iso = marketTimeIso(value);
+  return iso ? iso.slice(0, 10) : null;
+}
+
+/**
+ * Earnings and ex-dividend days from the quote object already fetched.
+ * dividendDate is a payment day, so it is not treated as an ex-dividend date.
+ * Fields Yahoo did not send are omitted.
+ */
+export function quoteEventDates(raw: Record<string, unknown>): { earningsDate?: string; exDividendDate?: string } {
+  const earningsDate = eventDay(raw.earningsTimestamp);
+  const exDividendDate = eventDay(raw.exDividendDate);
+  return {
+    ...(earningsDate ? { earningsDate } : {}),
+    ...(exDividendDate ? { exDividendDate } : {}),
+  };
+}
+
 function yearAgo(): Date {
   const date = new Date();
   date.setUTCFullYear(date.getUTCFullYear() - 1);
@@ -112,6 +131,7 @@ export function createYahooProvider(): MarketDataProvider {
         marketCap: asNumber(raw.marketCap),
         volume: asNumber(raw.regularMarketVolume),
         ...quoteClock(raw, new Date()),
+        ...quoteEventDates(raw),
       });
     },
     async getHistory(symbol: string) {

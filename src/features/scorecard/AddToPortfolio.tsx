@@ -4,6 +4,21 @@ import { Button } from "@/components/ui/Button";
 import { useDesk } from "@/lib/storage/desk";
 import Link from "next/link";
 
+export function WatchStar({ symbol }: { symbol: string }) {
+  const on = useDesk((state) => state.watchlist.includes(symbol));
+  const toggle = useDesk((state) => state.toggleWatch);
+  return (
+    <Button
+      variant="ghost"
+      aria-pressed={on}
+      aria-label={on ? `Remove ${symbol} from starred names` : `Star ${symbol}`}
+      onClick={() => toggle(symbol)}
+    >
+      {on ? "Starred" : "Star"}
+    </Button>
+  );
+}
+
 export function AddToPortfolio({ symbol }: { symbol: string }) {
   const add = useDesk((state) => state.addHolding);
   const saved = useDesk((state) => state.holdings.some((holding) => holding.symbol === symbol));

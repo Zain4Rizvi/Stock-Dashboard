@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { WatchStar } from "@/features/scorecard/AddToPortfolio";
 import { UniverseBadge } from "@/components/ui/DataBadge";
 import { PriceChart } from "@/features/scorecard/PriceChart";
 import { PricePointSchema, QuoteSchema, StockSchema } from "@/lib/data/schemas";
@@ -187,6 +188,7 @@ export function StockLookup({ universe, querySymbol }: { universe: ExplorerItem[
                   Previous {prior.replace(/\.TO$/, "")}
                 </Button>
               ) : null}
+              <WatchStar symbol={selected.symbol} />
               <Link
                 href={`/stock/${encodeURIComponent(selected.symbol)}`}
                 aria-label={`See more about ${selected.name}`}

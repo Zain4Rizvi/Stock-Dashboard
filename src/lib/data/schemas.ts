@@ -11,6 +11,10 @@ export const QuoteSchema = z.object({
   asOf: z.string().min(4),
   fetchedAt: z.string().min(4).optional(),
   delayMinutes: z.number().nonnegative().optional(),
+  /** UTC day from the quote's earningsTimestamp. Absent when that field was not on the quote. */
+  earningsDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  /** UTC day from the quote's exDividendDate. Absent when that field was not on the quote. */
+  exDividendDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const PricePointSchema = z.object({
