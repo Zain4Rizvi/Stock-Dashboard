@@ -214,7 +214,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
         <label className="block text-sm text-mist">
           Add a company
           <input
-            className="mt-1 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+            className="mt-1 w-full min-w-0 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
             placeholder="Search RY.TO or Royal Bank"
             value={query}
             autoComplete="off"

@@ -145,7 +145,7 @@ export function StockLookup({ universe, querySymbol }: { universe: ExplorerItem[
             autoComplete="off"
             aria-expanded={matches.length > 0}
             aria-controls="stock-search-results"
-            className="w-full rounded-2xl border border-cream/15 bg-pine px-4 py-3 text-cream outline-none placeholder:text-mist"
+            className="w-full min-w-0 rounded-2xl border border-cream/15 bg-pine px-4 py-3 text-cream outline-none placeholder:text-mist"
           />
         </label>
         {query.trim() && matches.length === 0 ? (

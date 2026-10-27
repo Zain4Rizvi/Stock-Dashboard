@@ -99,7 +99,7 @@ export function GalaxyExplorer({ universe }: { universe: ExplorerItem[] }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search RY.TO or Shopify"
-          className="w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream outline-none placeholder:text-mist"
+          className="w-full min-w-0 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream outline-none placeholder:text-mist"
         />
       </label>
       {matches.length > 0 ? (
