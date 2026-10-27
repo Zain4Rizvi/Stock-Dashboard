@@ -1,6 +1,8 @@
 "use client";
 
 import { UniverseBadge } from "@/components/ui/DataBadge";
+import { displayName } from "@/lib/format";
+import { sectorLabel, sectorPlain } from "@/lib/scoring/glossary";
 import type { Scorecard } from "@/lib/scoring/score";
 import type { ExplorerItem } from "@/types/market";
 import { useRouter } from "next/navigation";
@@ -37,20 +39,24 @@ export function CompareDesk({
       <div className="grid gap-4">
         {sectors.map((sector) => (
           <div key={sector}>
-            <h2 className="text-sm text-gold">{sector}</h2>
+            <h2 className="text-sm text-gold" title={sectorPlain(sector)}>
+              {sectorLabel(sector)}
+            </h2>
             <div className="mt-2 flex flex-wrap gap-2">
               {universe
                 .filter((item) => item.sector === sector)
                 .map((item) => {
                   const on = selected.includes(item.symbol);
+                  const shown = displayName(item.name, item.symbol);
                   return (
                     <button
                       key={item.symbol}
                       type="button"
+                      title={`${item.name} (${item.symbol})`}
                       onClick={() => toggle(item.symbol)}
                       className={`rounded-full px-3 py-1 text-sm ${on ? "bg-cream text-ink" : "border border-cream/15 text-cream"}`}
                     >
-                      {item.symbol.replace(".TO", "")}
+                      {shown.name} <span className="opacity-70">{shown.ticker}</span>
                     </button>
                   );
                 })}

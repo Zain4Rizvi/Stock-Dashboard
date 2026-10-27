@@ -3,6 +3,7 @@
 import { Billboard, OrbitControls, Stars, Text } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
+import { sectorLabel } from "@/lib/scoring/glossary";
 import { Suspense, useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { PlacedBody } from "./layout";
@@ -58,7 +59,7 @@ function Sky({
           <Billboard position={[0, 1.8, 0]}>
             <Suspense fallback={null}>
               <Text fontSize={0.48} color="#f4f0e6" anchorX="center" anchorY="middle">
-                {body.sector}
+                {sectorLabel(body.sector)}
               </Text>
             </Suspense>
           </Billboard>

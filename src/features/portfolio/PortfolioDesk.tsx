@@ -174,7 +174,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
     <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-5xl">Portfolio</h1>
+          <h1 className="font-display text-5xl">Practice</h1>
           <p className="mt-3 max-w-2xl leading-7 text-mist">A practice mix of shares. Nothing is bought.</p>
           <AccountLabel />
         </div>

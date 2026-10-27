@@ -3,6 +3,7 @@ import { shelfWeights } from "@/features/canada/shelf";
 import { torontoDate } from "@/lib/data/session";
 import { UNIVERSE } from "@/lib/data/seed/universe";
 import { formatCad } from "@/lib/format";
+import { sectorLabel, sectorPlain } from "@/lib/scoring/glossary";
 import type { ExplorerItem } from "@/types/market";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -84,7 +85,7 @@ export function CanadaDesk({ universe }: { universe: ExplorerItem[] }) {
             {weights.map((row) => (
               <li key={row.sector}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span>{row.sector}</span>
+                  <span title={sectorPlain(row.sector)}>{sectorLabel(row.sector)}</span>
                   <span className="text-mist">{row.weight.toFixed(1)}%</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-cream/10">
