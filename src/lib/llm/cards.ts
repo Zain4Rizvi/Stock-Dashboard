@@ -28,6 +28,73 @@ export function offlineCoach(): CoachCard {
   });
 }
 
+export function misconfiguredGuide(page: Pick<PageBrief, "tryThis">): GuideCard {
+  return GuideCardSchema.parse({
+    answer: "The teacher is not set up yet, so this is not a live answer. Nothing was sent to a model.",
+    tryThis: page.tryThis,
+    notAPrediction: true,
+  });
+}
+
+export function unavailableGuide(page: Pick<PageBrief, "tryThis">): GuideCard {
+  return GuideCardSchema.parse({
+    answer: "The teacher could not finish that answer. You can try the same question again.",
+    tryThis: page.tryThis,
+    notAPrediction: true,
+  });
+}
+
+export function limitedGuide(page: Pick<PageBrief, "tryThis">, scope: "hour" | "day", retryAt: string): GuideCard {
+  const when = retryAt.trim() || "later";
+  const answer =
+    scope === "day"
+      ? `The site has answered as many questions as it can today. Try again at ${when}.`
+      : `You've asked enough for this hour. Try again at ${when}.`;
+  return GuideCardSchema.parse({
+    answer,
+    tryThis: page.tryThis,
+    notAPrediction: true,
+  });
+}
+
+export function misconfiguredCoach(): CoachCard {
+  return CoachCardSchema.parse({
+    headline: "The teacher is not set up",
+    answer: "This desk cannot reach a teacher yet. Nothing was sent to a model, so this is not a personalized answer.",
+    fit: "Your three choices were not used. Nothing here is a match.",
+    watchouts: ["This is a setup gap, not a limit on your questions."],
+    terms: [],
+    notAPrediction: true,
+  });
+}
+
+export function unavailableCoach(): CoachCard {
+  return CoachCardSchema.parse({
+    headline: "The teacher is unavailable",
+    answer: "The teacher could not finish that answer. You can try the same question again.",
+    fit: "Your three choices were not used for this reply. Nothing here is a match.",
+    watchouts: ["A busy or timed-out teacher is not a verdict on a company."],
+    terms: [],
+    notAPrediction: true,
+  });
+}
+
+export function limitedCoach(scope: "hour" | "day", retryAt: string): CoachCard {
+  const when = retryAt.trim() || "later";
+  const answer =
+    scope === "day"
+      ? `The site has answered as many questions as it can today. Try again at ${when}.`
+      : `You've asked enough for this hour. Try again at ${when}.`;
+  return CoachCardSchema.parse({
+    headline: "The teacher is booked up",
+    answer,
+    fit: "Your three choices were not used for this reply. Nothing here is a match.",
+    watchouts: ["This is a pause, not a verdict on a company."],
+    terms: [],
+    notAPrediction: true,
+  });
+}
+
 export function refusedCoach(): CoachCard {
   return CoachCardSchema.parse({
     headline: "I don't give a verdict",

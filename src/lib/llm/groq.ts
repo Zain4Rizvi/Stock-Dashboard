@@ -7,13 +7,12 @@ function extractJson(text: string): unknown {
   return JSON.parse(trimmed);
 }
 
-export function createGroqProvider(): LLMProvider {
+export function createGroqProvider(apiKey: string, model?: string): LLMProvider {
+  const chosen = model?.trim() || "openai/gpt-oss-120b";
   return {
     id: "groq",
     async complete<T>(prompt: string, schema: ZodType<T>): Promise<T> {
-      const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) throw new Error("GROQ_API_KEY is not set");
-      const model = process.env.LLM_MODEL || "openai/gpt-oss-120b";
+      if (!apiKey.trim()) throw new Error("Teacher is not set up");
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         signal: AbortSignal.timeout(20000),
@@ -22,7 +21,7 @@ export function createGroqProvider(): LLMProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model,
+          model: chosen,
           temperature: 0.3,
           response_format: { type: "json_object" },
           messages: [
