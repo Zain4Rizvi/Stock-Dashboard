@@ -30,10 +30,10 @@ export const PAGE_BRIEFS = {
     tryThis: "Pick two companies and read one row of the table.",
   },
   portfolio: {
-    title: "Practice",
+    title: "Portfolio",
     brief:
-      "A practice portfolio of share counts. Nothing is bought. Search or add a company, then set how many shares. The chart is the past value of that mix: each past price times the shares you hold, added together. The numbers on top are today's value and how that value changed over the chart. The band after today is a what-if: if the past year repeated, with a high and low range. It is not a promise. If there is not a full year of prices, the what-if uses 6% and says so.",
-    tryThis: "Add a company and change the share count.",
+      "A portfolio of share counts. Nothing is bought. The list at the bottom shows every company on this shelf. Filter by name, ticker, or sector, type how many shares, and add it. The dollar figure beside that count is today's price times those shares. You can change the share count after it is added. The chart is the past value of that mix: each past price times the shares you hold, added together. The numbers on top are today's value and how that value changed over the chart. The band after today is a what-if: if the past year repeated, with a high and low range. It is not a promise. If there is not a full year of prices, the what-if uses 6% and says so.",
+    tryThis: "Add a company from the list and change the share count.",
   },
   dividends: {
     title: "Dividends",
@@ -68,13 +68,13 @@ export const PAGE_BRIEFS = {
   start: {
     title: "Start",
     brief:
-      "A first path in three steps: what a share is, how one company differs from a broad fund, and a practice portfolio where nothing is bought. A monthly amount starts at 500 dollars and can be changed. The bars only add up money set aside. They are not a return. Links from this page open Compare, Dividends, Years from now, the quiz, and Canada.",
-    tryThis: "Change the monthly amount, then open the practice portfolio.",
+      "A first path in three steps: what a share is, how one company differs from a broad fund, and a portfolio where nothing is bought. A monthly amount starts at 500 dollars and can be changed. The bars only add up money set aside. They are not a return. Links from this page open Compare, Dividends, Years from now, the quiz, and Canada.",
+    tryThis: "Change the monthly amount, then open the portfolio.",
   },
   ask: {
     title: "Ask",
     brief:
-      "A coach for investing questions. Three choices sit at the top: your goal, your horizon, and how a big drop would feel. They are saved on this device. Answers come back as cards with a headline, a plain answer, how it fits those choices, watch-outs, and meanings of words. The practice portfolio, if you saved one, can be mentioned. The coach will not tell you to buy or sell, and it will not guess a future price. If the model is off, the card says so.",
+      "A coach for investing questions. Three choices sit at the top: your goal, your horizon, and how a big drop would feel. They are saved on this device. Answers come back as cards with a headline, a plain answer, how it fits those choices, watch-outs, and meanings of words. The portfolio, if you saved one, can be mentioned. The coach will not tell you to buy or sell, and it will not guess a future price. If the model is off, the card says so.",
     tryThis: "Set the three choices, then ask one question in your own words.",
   },
 } as const satisfies Record<string, PageBrief>;

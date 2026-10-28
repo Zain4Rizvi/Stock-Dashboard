@@ -4,7 +4,7 @@ import { DataBadge } from "@/components/ui/DataBadge";
 import { Button } from "@/components/ui/Button";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { PricePointSchema, QuoteSchema, StockSchema } from "@/lib/data/schemas";
-import { parseHoldingCsv, type HoldingCsvResult } from "@/lib/finance/csv";
+import { clampShares, parseHoldingCsv, type HoldingCsvResult } from "@/lib/finance/csv";
 import { portfolioOutlook, portfolioValue, type PortfolioFanStep, type PortfolioOutlook } from "@/lib/finance/portfolio";
 import { formatCad, formatCompactCad, formatPercent } from "@/lib/format";
 import { type Holding, type PracticeAccount, useDesk } from "@/lib/storage/desk";
@@ -91,7 +91,6 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
   const remove = useDesk((state) => state.removeHolding);
   const setShares = useDesk((state) => state.setShares);
   const [ready, setReady] = useState(false);
-  const [query, setQuery] = useState("");
   const [loaded, setLoaded] = useState<Record<string, HoldingSnapshot | null>>({});
   const symbolKey = holdings.map((holding) => holding.symbol).join("\n");
   const bySymbol = useMemo(() => new Map(universe.map((item) => [item.symbol, item])), [universe]);
@@ -158,12 +157,6 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
     return mixModel(holdings, loaded, bySymbol);
   }, [settled, holdings, loaded, bySymbol]);
 
-  const matches = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return [];
-    return universe.filter((item) => item.symbol.toLowerCase().includes(needle) || item.name.toLowerCase().includes(needle));
-  }, [query, universe]);
-
   if (!ready) return <p className="px-4 py-10 text-mist">Opening your portfolio…</p>;
 
   const badge = mixBadge(holdings, loaded, bySymbol);
@@ -174,8 +167,8 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
     <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-5xl">Practice</h1>
-          <p className="mt-3 max-w-2xl leading-7 text-mist">A practice mix of shares. Nothing is bought.</p>
+          <h1 className="font-display text-5xl">Portfolio</h1>
+          <p className="mt-3 max-w-2xl leading-7 text-mist">A mix of shares. Nothing is bought.</p>
           <AccountLabel />
         </div>
         {badge ? (
@@ -193,7 +186,7 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
       {model.outlook ? <Summary outlook={model.outlook} /> : null}
       <section className="rounded-3xl border border-cream/10 bg-pine/80 p-4">
         {holdings.length === 0 ? (
-          <p className="flex h-80 items-center justify-center text-sm text-mist">Add a stock below.</p>
+          <p className="flex h-80 items-center justify-center text-sm text-mist">Pick a company at the bottom.</p>
         ) : !settled ? (
           <p className="flex h-80 items-center justify-center text-sm text-mist">Loading prices…</p>
         ) : showChart && model.outlook ? (
@@ -223,39 +216,8 @@ export function PortfolioDesk({ universe }: { universe: ExplorerItem[] }) {
           </ul>
         </section>
       ) : null}
-      <section>
-        <label className="block text-sm text-mist">
-          Add a company
-          <input
-            className="mt-1 w-full min-w-0 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
-            placeholder="Search RY.TO or Royal Bank"
-            value={query}
-            autoComplete="off"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        {query.trim() && matches.length === 0 ? <p className="mt-3 text-sm text-mist">No match.</p> : null}
-        {matches.length > 0 ? (
-          <ul className="mt-3 grid gap-2">
-            {matches.slice(0, 8).map((item) => {
-              const held = holdings.some((holding) => holding.symbol === item.symbol);
-              return (
-                <li key={item.symbol} className="flex items-center justify-between gap-3 rounded-2xl border border-cream/10 px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{item.name}</p>
-                    <p className="text-xs text-mist">{item.symbol}</p>
-                  </div>
-                  <Button variant="ghost" disabled={held} onClick={() => add(item.symbol)}>
-                    {held ? "Added" : "Add"}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-        {matches.length > 8 ? <p className="mt-2 text-xs text-mist">Showing 8 matches. Type more to narrow them.</p> : null}
-      </section>
       <HoldingImport known={bySymbol} />
+      <CompanyList universe={universe} holdings={holdings} onAdd={add} onUpdate={setShares} />
     </div>
   );
 }
@@ -550,7 +512,7 @@ function AccountLabel() {
   return (
     <div className="mt-4 grid max-w-md gap-2">
       <label className="block text-sm text-mist">
-        Practice account
+        Account
         <select
           className="mt-1 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
           value={accountType ?? ""}
@@ -669,6 +631,131 @@ function ImportPreview({ parsed, onSave }: { parsed: HoldingCsvResult; onSave: (
         Save on this browser
       </Button>
     </div>
+  );
+}
+
+function typedShares(text: string): number | null {
+  const next = Number(text);
+  if (!Number.isFinite(next) || next <= 0) return null;
+  return clampShares(next);
+}
+
+function CompanyList({
+  universe,
+  holdings,
+  onAdd,
+  onUpdate,
+}: {
+  universe: ExplorerItem[];
+  holdings: Holding[];
+  onAdd: (symbol: string, shares: number) => void;
+  onUpdate: (symbol: string, shares: number) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [sector, setSector] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const sectors = useMemo(() => [...new Set(universe.map((item) => item.sector))].sort((a, b) => a.localeCompare(b, "en-CA")), [universe]);
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return universe
+      .filter((item) => {
+        if (sector && item.sector !== sector) return false;
+        if (!needle) return true;
+        return item.symbol.toLowerCase().includes(needle) || item.name.toLowerCase().includes(needle);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "en-CA"));
+  }, [query, sector, universe]);
+  const heldBySymbol = useMemo(() => new Map(holdings.map((holding) => [holding.symbol, holding])), [holdings]);
+
+  return (
+    <section className="grid gap-3">
+      <h2 className="text-sm text-mist">All companies</h2>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem]">
+        <label className="block text-sm text-mist">
+          Find a company
+          <input
+            className="mt-1 w-full min-w-0 rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+            placeholder="Name or ticker"
+            value={query}
+            autoComplete="off"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label className="block text-sm text-mist">
+          Sector
+          <select
+            className="mt-1 w-full rounded-2xl border border-cream/15 bg-pine px-3 py-2 text-cream"
+            value={sector}
+            onChange={(event) => setSector(event.target.value)}
+          >
+            <option value="">All</option>
+            {sectors.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="text-sm text-mist">
+        {shown.length} {shown.length === 1 ? "company" : "companies"}
+      </p>
+      {shown.length === 0 ? <p className="text-sm text-mist">No match.</p> : null}
+      <ul className="grid gap-2">
+        {shown.map((item) => {
+          const held = heldBySymbol.get(item.symbol);
+          const text = drafts[item.symbol] ?? (typeof held?.shares === "number" ? String(held.shares) : "1");
+          const shares = typedShares(text);
+          const value = shares != null && item.price > 0 ? shares * item.price : null;
+          return (
+            <li
+              key={item.symbol}
+              className="grid items-center gap-3 rounded-2xl border border-cream/10 p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium">{item.name}</p>
+                <p className="truncate text-xs text-mist">
+                  {item.symbol} · {item.sector}
+                </p>
+              </div>
+              <p className="text-xs text-mist">
+                Price
+                <span className="mt-1 block text-base text-cream">{formatCad(item.price)}</span>
+              </p>
+              <label className="text-xs text-mist">
+                Shares
+                <input
+                  className="mt-1 w-28 rounded-xl border border-cream/15 bg-pine px-2 py-1 text-cream"
+                  type="number"
+                  min={0.01}
+                  max={1000000}
+                  step="any"
+                  inputMode="decimal"
+                  aria-label={`Shares of ${item.name}`}
+                  value={text}
+                  onChange={(event) => setDrafts((current) => ({ ...current, [item.symbol]: event.target.value }))}
+                />
+              </label>
+              <p className="text-xs text-mist">
+                Value
+                <span className="mt-1 block text-base text-cream">{value == null ? "—" : formatCad(value)}</span>
+              </p>
+              <Button
+                variant="ghost"
+                disabled={shares == null}
+                onClick={() => {
+                  if (shares == null) return;
+                  if (held) onUpdate(item.symbol, shares);
+                  else onAdd(item.symbol, shares);
+                }}
+              >
+                {held ? "Update" : "Add"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

@@ -6,7 +6,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Start · Maple Market",
-  description: "What a share is, how a broad fund differs from one company, and a practice portfolio.",
+  description: "What a share is, how a broad fund differs from one company, and a portfolio.",
 };
 
 const MORE = [
@@ -25,7 +25,7 @@ export default function Page() {
       <header className="grid gap-3">
         <h1 className="font-display text-5xl">Start here</h1>
         <p className="text-lg leading-8">
-          Three short steps. A share, then a broad fund beside one company, then a practice portfolio. Nothing on this path tells you what to buy.
+          Three short steps. A share, then a broad fund beside one company, then a portfolio. Nothing on this path tells you what to buy.
         </p>
       </header>
       <Disclaimer prominent />
@@ -64,16 +64,16 @@ export default function Page() {
 
         <li className="grid gap-3 rounded-3xl border border-cream/10 bg-pine/80 p-5">
           <p className="text-sm text-gold">Step 3</p>
-          <h2 className="font-display text-3xl">Practice with shares you do not buy</h2>
+          <h2 className="font-display text-3xl">A portfolio of shares you do not buy</h2>
           <p className="leading-7">
-            The practice portfolio is a notebook of share counts. You can change the mix and look at a picture of it. Maple Market does not place an order.
+            The portfolio is a notebook of share counts. You can change the mix and look at a picture of it. Maple Market does not place an order.
           </p>
           <MonthlyPicture />
           <Link
             href="/portfolio"
             className="inline-flex w-fit items-center rounded-full bg-maple px-4 py-2 text-sm font-medium text-ink"
           >
-            Open the practice portfolio
+            Open the portfolio
           </Link>
         </li>
       </ol>

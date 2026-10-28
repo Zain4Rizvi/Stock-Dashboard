@@ -51,7 +51,7 @@ describe("ask language", () => {
       unknownTicker: null,
     });
     expect(blank).toMatch(/choices are empty/i);
-    expect(blank).toMatch(/Practice portfolio: empty/);
+    expect(blank).toMatch(/Portfolio: empty/);
 
     const card = {
       headline: "A dividend is cash, not a promise",

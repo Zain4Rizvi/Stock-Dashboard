@@ -9,7 +9,7 @@ const PRIMARY = [
   ["/", "Explore"],
   ["/start", "Start"],
   ["/heatmap", "Stocks"],
-  ["/portfolio", "Practice"],
+  ["/portfolio", "Portfolio"],
   ["/ask", "Ask"],
 ] as const;
 

@@ -130,8 +130,8 @@ export function coachPrompt(input: {
     : "The three choices are empty. Do not invent a match. Say in fit that the choices are empty.";
   const shelf =
     input.holdings.length === 0
-      ? "Practice portfolio: empty. Do not invent companies."
-      : `Practice portfolio (share counts, nothing is bought): ${input.holdings
+      ? "Portfolio: empty. Do not invent companies."
+      : `Portfolio (share counts, nothing is bought): ${input.holdings
           .map((holding) => `${holding.symbol} ${sharePhrase(holding.shares)}`)
           .join(", ")}.`;
   const earlier = historyBlock(input.history);
@@ -146,15 +146,15 @@ export function coachPrompt(input: {
     : ["There is no stock snapshot. asOf must be null and sourceNote must be null. Do not invent a date or a source."];
   return [
     "Answer an investing question for a 22-year-old who has never studied finance.",
-    "Use only the choices, the practice portfolio, and the stock snapshot below.",
+    "Use only the choices, the portfolio, and the stock snapshot below.",
     "Do not invent news, lawsuits, or numbers that are not written here.",
     "Do not guess a future price. Do not tell them to trade. Do not name a target.",
     input.profile
       ? "fit must use the goal, horizon, and drop words below. Do not say the choices are missing."
       : "fit must say the choices are empty. Do not invent a match.",
     input.holdings.length === 0
-      ? "fit must say the practice portfolio is empty. Do not invent companies."
-      : "fit must mention the practice portfolio symbols below. Do not invent extra companies.",
+      ? "fit must say the portfolio is empty. Do not invent companies."
+      : "fit must mention the portfolio symbols below. Do not invent extra companies.",
     ...snapshotRules,
     `sourceNote must be null, or exactly one of: ${SOURCE_NOTES.join(" | ")}.`,
     "Do not include a price history.",

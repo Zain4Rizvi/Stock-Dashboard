@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from "react";
 const STARTERS = [
   "What does a dividend actually do for someone like me?",
   "Why would I own more than one company?",
-  "What would a bad year feel like with my practice portfolio?",
+  "What would a bad year feel like with my portfolio?",
 ];
 
 export function AskDesk() {
@@ -127,7 +127,7 @@ export function AskDesk() {
               and they can show up in the fit line.
             </>
           ) : (
-            <>Practice portfolio: {holdings.map((holding) => holding.symbol).join(", ")}.</>
+            <>Portfolio: {holdings.map((holding) => holding.symbol).join(", ")}.</>
           )}
           {profile ? " Saved on this device." : null}
         </p>

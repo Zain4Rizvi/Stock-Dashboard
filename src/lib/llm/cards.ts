@@ -105,7 +105,7 @@ export function refusedCoach(): CoachCard {
   return CoachCardSchema.parse({
     headline: "I don't give a verdict",
     answer: "I can explain a company and how your choices sit with it. I will not tell you to trade or guess the next price.",
-    fit: "Your three choices and practice portfolio stay on this device. They are not a reason to trade.",
+    fit: "Your three choices and portfolio stay on this device. They are not a reason to trade.",
     watchouts: ["A grade or a green year describes the past."],
     terms: [],
     ...ungrounded,
